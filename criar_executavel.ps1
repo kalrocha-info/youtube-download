@@ -14,8 +14,8 @@ if (-not (Test-Path ".venv")) {
 # 2. Ativar o ambiente virtual e atualizar dependências
 Write-Host "Instalando/Atualizando dependências..." -ForegroundColor Yellow
 & .venv/Scripts/pip install --upgrade pip
-& .venv/Scripts/pip install -r requirements.txt
-& .venv/Scripts/pip install -e ".[dev]"
+& .venv/Scripts/pip install --upgrade -r requirements.txt
+& .venv/Scripts/pip install --upgrade -e ".[dev]"
 
 # 3. Compilar usando o PyInstaller
 Write-Host "Compilando script para Executável Windows..." -ForegroundColor Yellow
