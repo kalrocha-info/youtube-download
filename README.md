@@ -94,6 +94,23 @@ pyinstaller --onefile --noconsole --paths src --name="Baixador_YouTube" --icon="
 ```
 > **Nota:** Certifique-se de que a pasta `bin/ffmpeg/` contendo os binários do FFmpeg esteja presente no mesmo diretório do arquivo `.exe` compilado quando for distribuí-lo para computadores que não possuem o FFmpeg no `PATH` do sistema. Veja a documentação técnica sobre isso no [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
 
+## 🧰 Como Gerar o Instalador Windows
+
+Após gerar o executável e garantir que `dist/bin/ffmpeg/` exista, gere o instalador com Inno Setup:
+
+```powershell
+winget install --id JRSoftware.InnoSetup -e
+.\criar_executavel.ps1
+Copy-Item -Recurse -Force .\bin .\dist\
+.\criar_instalador.ps1
+```
+
+O instalador final será criado em:
+
+```text
+release/MediaDownloadWindowsSetup_v1.0.0.exe
+```
+
 ---
 
 ## 📁 Estrutura de Pastas
