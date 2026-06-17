@@ -15,10 +15,11 @@ if (-not (Test-Path ".venv")) {
 Write-Host "Instalando/Atualizando dependências..." -ForegroundColor Yellow
 & .venv/Scripts/pip install --upgrade pip
 & .venv/Scripts/pip install -r requirements.txt
+& .venv/Scripts/pip install -e ".[dev]"
 
 # 3. Compilar usando o PyInstaller
 Write-Host "Compilando script para Executável Windows..." -ForegroundColor Yellow
-& .venv/Scripts/pyinstaller --clean --onefile --noconsole --name="Baixador_YouTube" src/baixador.py
+& .venv/Scripts/pyinstaller --clean --onefile --noconsole --paths src --name="Baixador_YouTube" src/youtube_download/__main__.py
 
 # 4. Finalização
 if ($LASTEXITCODE -eq 0) {

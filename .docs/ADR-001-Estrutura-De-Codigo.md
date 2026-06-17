@@ -1,14 +1,14 @@
 # ADR-001: Desacoplamento da Lógica de Negócios e Interface Gráfica (Refatoração de Arquitetura)
 
 **Data:** 13 de junho de 2026  
-**Status:** Proposto  
+**Status:** Aceito / Implementado parcialmente  
 **Decisores:** Time Técnico do Projeto (Senior Architect)  
 
 ---
 
 ## Contexto
 
-Atualmente, o projeto é estruturado em um único script monolítico `src/baixador.py` com cerca de 250 linhas de código. Esse arquivo acumula múltiplas responsabilidades:
+Inicialmente, o projeto era estruturado em um único script monolítico `src/baixador.py` com cerca de 250 linhas de código. Esse arquivo acumulava múltiplas responsabilidades:
 1.  Definição e estilização da interface gráfica usando Tkinter.
 2.  Manipulação e captura direta de estados dos campos da GUI.
 3.  Resolução e varredura de caminhos de arquivos locais (como a pasta binária do FFmpeg).
@@ -59,7 +59,7 @@ Separar o script em pelo menos duas classes/módulos distintos:
 
 Optou-se pela **Opção 2: Refatoração para Arquitetura Multicamadas Desacoplada**.
 
-A refatoração será estruturada na próxima fase de desenvolvimento técnico. A lógica contida hoje na função `baixar_thread()` será exportada para uma classe especialista de serviço de downloads que recebe os parâmetros e um callback de progresso, isolando completamente o Tkinter da biblioteca `yt-dlp`.
+A refatoração iniciou a migração para um pacote Python em `src/youtube_download/`. A interface Tkinter fica em `app.py`, a lógica de validação e montagem das opções do `yt-dlp` fica em `downloader.py`, e a resolução do FFmpeg fica em `ffmpeg_locator.py`.
 
 ---
 

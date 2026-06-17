@@ -60,7 +60,7 @@ Não prover auto-detecção local e exigir que o usuário instale o FFmpeg no Wi
 
 Optou-se pela **Opção 2: Distribuição Modular com Detecção Relativa (Híbrida Portátil)**.
 
-Implementou-se no código de inicialização do `baixador.py` o seguinte fluxo de resolução do caminho:
+Implementou-se no módulo `src/youtube_download/ffmpeg_locator.py` o seguinte fluxo de resolução do caminho:
 1.  Verifica se a aplicação está rodando em modo compilado (PyInstaller `frozen=True`).
 2.  Obtém o caminho absoluto do diretório do executável (ou pasta de desenvolvimento).
 3.  Procura pela subpasta `bin/ffmpeg` e escaneia por diretórios criados a partir do extrator oficial (ex: `ffmpeg-*-full_build/bin`) ou pasta `bin` genérica.

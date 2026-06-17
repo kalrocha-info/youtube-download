@@ -40,6 +40,8 @@
 | Proteção playlist | ✅ Novo | noplaylist=True por padrão |
 | Progresso em tempo real | ✅ Novo | Exibe % e velocidade |
 | Detecção FFmpeg | ✅ Completo | Auto-detecta em bin/ffmpeg/ |
+| Validação de URL | ✅ Novo | Aceita domínios YouTube/YouTube Music |
+| Sanitização de nome | ✅ Novo | Remove caracteres inválidos e separadores de caminho |
 
 ### Problemas Corrigidos 🔧
 
@@ -64,7 +66,14 @@ YOUTUBE_DOWNLOAD/
 │   └── 📄 ANALISE_PROJETO.md            # Este arquivo
 │
 ├── 📁 src/
-│   └── 📄 baixador.py                    # Código principal (275+ linhas)
+│   └── 📁 youtube_download/
+│       ├── 📄 __main__.py                # Entrypoint do pacote
+│       ├── 📄 app.py                     # Interface Tkinter e orquestração
+│       ├── 📄 downloader.py              # Validação, sanitização e yt-dlp
+│       └── 📄 ffmpeg_locator.py          # Resolução portátil do FFmpeg
+│
+├── 📁 tests/
+│   └── 📄 test_downloader.py             # Testes unitários do núcleo
 │
 ├── 📁 assets/
 │   └── 📁 (ícones, imagens, recursos)
@@ -87,7 +96,7 @@ YOUTUBE_DOWNLOAD/
 
 ### Tamanho & Métricas
 
-- **Linhas de código:** ~275 linhas (baixador.py)
+- **Linhas de código:** núcleo distribuído entre `app.py`, `downloader.py` e `ffmpeg_locator.py`
 - **Dependências:** 3 principais (yt-dlp, tkinter, os)
 - **FFmpeg:** 430 MB (completo + build tools)
 - **Tamanho esperado EXE:** 150-200 MB (com FFmpeg bundled)
@@ -173,7 +182,7 @@ MODO VÍDEO:
 
 | Componente | Owner | Responsabilidade |
 |---|---|---|
-| **Backend (baixador.py)** | Desenvolvedor Python | Lógica, downloads, threading |
+| **Backend (youtube_download/downloader.py)** | Desenvolvedor Python | Validação, downloads e integração com yt-dlp |
 | **UI (Tkinter)** | Dev Front-end | Interface, UX, validações |
 | **FFmpeg** | DevOps/Admin | Instalação, manutenção, updates |
 | **Dependências** | Tech Lead | requirements.txt, versões |
@@ -216,7 +225,7 @@ MODO VÍDEO:
 |---|---|---|
 | **Sem controle de tamanho arquivo** | Disco cheio | 🔄 TODO: Adicionar limite |
 | **Sem compressão/criptografia** | Arquivo baixado visível | 🔄 Depende do caso de uso |
-| **Sem sanitização de nome** | Path traversal | 🔄 TODO: Sanitizar entrada |
+| **Nome customizado inseguro** | Path traversal | ✅ Sanitização no núcleo |
 | **Sem rate limiting** | Abuso de API YouTube | 🔄 yt-dlp já limita internamente |
 
 #### 🟢 **Baixo**
@@ -230,7 +239,8 @@ MODO VÍDEO:
 
 ```python
 ✅ Uso de try/except para capturar exceções
-✅ Validação de entrada (entrada_link.get().strip())
+✅ Validação de entrada com domínio YouTube/YouTube Music
+✅ Sanitização de nomes customizados
 ✅ Uso de global para controlar estado
 ✅ Threading para não bloquear UI
 ✅ Detecção segura de caminhos (os.path.join)
@@ -240,35 +250,21 @@ MODO VÍDEO:
 
 ### Recomendações de Segurança 🛡️
 
-1. **Adicionar validação regex de URL:**
-   ```python
-   import re
-   URL_PATTERN = r'^https://(www\.)?youtube\.com/...'
-   if not re.match(URL_PATTERN, link):
-       messagebox.showerror(...)
-   ```
-
-2. **Sanitizar nomes de arquivo:**
-   ```python
-   import re
-   nome = re.sub(r'[<>:"/\\|?*]', '_', nome)
-   ```
-
-3. **Limitar tamanho de download:**
+1. **Limitar tamanho de download:**
    ```python
    MAX_SIZE_MB = 1000
    if tamanho > MAX_SIZE_MB * 1024 * 1024:
        raise Exception("Arquivo muito grande")
    ```
 
-4. **Adicionar logging de eventos:**
+2. **Adicionar logging de eventos:**
    ```python
    import logging
    logger = logging.getLogger(__name__)
    logger.info(f"Download iniciado: {link}")
    ```
 
-5. **Versionamento de dependências:**
+3. **Versionamento de dependências:**
    ```txt
    yt-dlp>=2026.3.14
    pyinstaller>=6.10.0
@@ -356,17 +352,7 @@ MODO VÍDEO:
 
 ### Curto Prazo (1-2 semanas)
 
-1. **Validação robusta de URL**
-   - Adicionar regex pattern matching
-   - Testar com URLs malformadas
-   - Prioridade: 🟠 Alta
-
-2. **Sanitização de nomes**
-   - Remover caracteres inválidos em filename
-   - Evitar path traversal
-   - Prioridade: 🟠 Alta
-
-3. **Logging de eventos**
+1. **Logging de eventos**
    - Arquivo de log em .logs/
    - Registrar erros e sucessos
    - Prioridade: 🟡 Média
@@ -451,7 +437,8 @@ SUPPORT (monitoramento)
 - [README.md](../README.md) - Guia de uso
 - [requirements.txt](../requirements.txt) - Dependências
 - [criar_estrutura.ps1](../criar_estrutura.ps1) - Setup script
-- [src/baixador.py](../src/baixador.py) - Código fonte
+- [src/youtube_download/app.py](../src/youtube_download/app.py) - Interface e orquestração
+- [src/youtube_download/downloader.py](../src/youtube_download/downloader.py) - Núcleo de download
 
 ---
 
