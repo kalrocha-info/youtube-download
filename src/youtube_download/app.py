@@ -3,13 +3,13 @@ from tkinter import ttk, messagebox, filedialog
 import os
 import threading
 
-from downloader import (
+from youtube_download.downloader import (
     DownloadCancelled,
     DownloadRequest,
     DownloadValidationError,
     run_download,
 )
-from ffmpeg_locator import resolve_ffmpeg_path
+from youtube_download.ffmpeg_locator import resolve_ffmpeg_path
 
 # 📂 Pasta padrão de saída
 PASTA_SAIDA = os.path.expanduser("~\\Downloads")
@@ -116,8 +116,10 @@ def escolher_pasta():
         texto_caminho.config(text=f"📂 Salvar em: {PASTA_SAIDA}")
 
 
-# 🖥️ INTERFACE GRÁFICA
-if __name__ == "__main__":
+def main():
+    global btn_baixar, btn_parar, escolha_formato, escolha_qualidade
+    global entrada_link, entrada_nome, janela, texto_caminho, texto_status
+
     janela = tk.Tk()
     janela.title("🎵 Baixador YouTube - Pacote Completo")
     janela.geometry("750x550")
@@ -198,3 +200,7 @@ if __name__ == "__main__":
     texto_status.pack(pady=10)
 
     janela.mainloop()
+
+
+if __name__ == "__main__":
+    main()

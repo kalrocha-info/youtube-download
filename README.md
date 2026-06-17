@@ -68,11 +68,12 @@ python -m venv .venv
 ### 3. Instalar Dependências
 ```powershell
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 4. Executar o Aplicativo
 ```powershell
-python src/baixador.py
+python -m youtube_download
 ```
 
 ### 5. Rodar Testes Automatizados
@@ -89,7 +90,7 @@ O projeto usa o `PyInstaller` para empacotar o script Python em um único execut
 Para compilar de forma portátil:
 
 ```powershell
-pyinstaller --onefile --noconsole --name="Baixador_YouTube" --icon="assets/icon.ico" src/baixador.py
+pyinstaller --onefile --noconsole --paths src --name="Baixador_YouTube" --icon="assets/icon.ico" src/youtube_download/__main__.py
 ```
 > **Nota:** Certifique-se de que a pasta `bin/ffmpeg/` contendo os binários do FFmpeg esteja presente no mesmo diretório do arquivo `.exe` compilado quando for distribuí-lo para computadores que não possuem o FFmpeg no `PATH` do sistema. Veja a documentação técnica sobre isso no [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
 
@@ -111,9 +112,11 @@ YOUTUBE_DOWNLOAD/
 │   └── 📄 ADR-002-...            # Decisão de Arquitetura: Empacotamento do FFmpeg
 │
 ├── 📁 src/                       # Código-fonte
-│   ├── 📄 baixador.py            # Interface Tkinter e orquestração da aplicação
-│   ├── 📄 downloader.py          # Validação, sanitização e opções do yt-dlp
-│   └── 📄 ffmpeg_locator.py      # Detecção portátil do FFmpeg
+│   └── 📁 youtube_download/      # Pacote Python instalável
+│       ├── 📄 __main__.py        # Entrypoint para python -m youtube_download
+│       ├── 📄 app.py             # Interface Tkinter e orquestração da aplicação
+│       ├── 📄 downloader.py      # Validação, sanitização e opções do yt-dlp
+│       └── 📄 ffmpeg_locator.py  # Detecção portátil do FFmpeg
 │
 ├── 📁 tests/                     # Testes unitários com unittest
 │   └── 📄 test_downloader.py     # Contratos de validação e montagem de opções

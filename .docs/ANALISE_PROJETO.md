@@ -66,9 +66,11 @@ YOUTUBE_DOWNLOAD/
 │   └── 📄 ANALISE_PROJETO.md            # Este arquivo
 │
 ├── 📁 src/
-│   ├── 📄 baixador.py                    # Interface Tkinter e orquestração
-│   ├── 📄 downloader.py                  # Validação, sanitização e yt-dlp
-│   └── 📄 ffmpeg_locator.py              # Resolução portátil do FFmpeg
+│   └── 📁 youtube_download/
+│       ├── 📄 __main__.py                # Entrypoint do pacote
+│       ├── 📄 app.py                     # Interface Tkinter e orquestração
+│       ├── 📄 downloader.py              # Validação, sanitização e yt-dlp
+│       └── 📄 ffmpeg_locator.py          # Resolução portátil do FFmpeg
 │
 ├── 📁 tests/
 │   └── 📄 test_downloader.py             # Testes unitários do núcleo
@@ -94,7 +96,7 @@ YOUTUBE_DOWNLOAD/
 
 ### Tamanho & Métricas
 
-- **Linhas de código:** ~275 linhas (baixador.py)
+- **Linhas de código:** núcleo distribuído entre `app.py`, `downloader.py` e `ffmpeg_locator.py`
 - **Dependências:** 3 principais (yt-dlp, tkinter, os)
 - **FFmpeg:** 430 MB (completo + build tools)
 - **Tamanho esperado EXE:** 150-200 MB (com FFmpeg bundled)
@@ -180,7 +182,7 @@ MODO VÍDEO:
 
 | Componente | Owner | Responsabilidade |
 |---|---|---|
-| **Backend (baixador.py)** | Desenvolvedor Python | Lógica, downloads, threading |
+| **Backend (youtube_download/downloader.py)** | Desenvolvedor Python | Validação, downloads e integração com yt-dlp |
 | **UI (Tkinter)** | Dev Front-end | Interface, UX, validações |
 | **FFmpeg** | DevOps/Admin | Instalação, manutenção, updates |
 | **Dependências** | Tech Lead | requirements.txt, versões |
@@ -435,7 +437,8 @@ SUPPORT (monitoramento)
 - [README.md](../README.md) - Guia de uso
 - [requirements.txt](../requirements.txt) - Dependências
 - [criar_estrutura.ps1](../criar_estrutura.ps1) - Setup script
-- [src/baixador.py](../src/baixador.py) - Código fonte
+- [src/youtube_download/app.py](../src/youtube_download/app.py) - Interface e orquestração
+- [src/youtube_download/downloader.py](../src/youtube_download/downloader.py) - Núcleo de download
 
 ---
 

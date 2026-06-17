@@ -9,7 +9,7 @@ SRC_DIR = os.path.join(PROJECT_ROOT, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
-from downloader import (  # noqa: E402
+from youtube_download.downloader import (  # noqa: E402
     DownloadRequest,
     DownloadValidationError,
     build_ytdlp_options,
@@ -17,7 +17,7 @@ from downloader import (  # noqa: E402
     sanitize_filename_template,
     validate_request,
 )
-from ffmpeg_locator import resolve_ffmpeg_path  # noqa: E402
+from youtube_download.ffmpeg_locator import resolve_ffmpeg_path  # noqa: E402
 
 
 class DownloaderValidationTest(unittest.TestCase):
