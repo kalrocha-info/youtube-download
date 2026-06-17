@@ -1,9 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import yt_dlp
 import os
-import sys
 import threading
+
+from downloader import (
+    DownloadCancelled,
+    DownloadRequest,
+    DownloadValidationError,
+    run_download,
+)
+from ffmpeg_locator import resolve_ffmpeg_path
 
 # 📂 Pasta padrão de saída
 PASTA_SAIDA = os.path.expanduser("~\\Downloads")
@@ -14,34 +20,10 @@ if not os.path.exists(PASTA_SAIDA):
 PARAR_DOWNLOAD = False
 DOWNLOAD_EM_PROGRESSO = False
 
-# 📌 CAMINHO RELATIVO DO FFMPEG (funciona no código e no executável)
-if getattr(sys, 'frozen', False):
-    CAMINHO_BASE = os.path.dirname(sys.executable)
-else:
-    CAMINHO_BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# Procura pela pasta do FFmpeg extraída (ffmpeg-*-full_build)
-FFMPEG_PASTA = os.path.join(CAMINHO_BASE, "bin", "ffmpeg")
-FFMPEG_CAMINHO = None
-
-if os.path.exists(FFMPEG_PASTA):
-    # Procura por pasta ffmpeg-*-full_build
-    for pasta in os.listdir(FFMPEG_PASTA):
-        if pasta.startswith("ffmpeg-") and "full_build" in pasta:
-            caminho_encontrado = os.path.join(FFMPEG_PASTA, pasta, "bin")
-            if os.path.exists(caminho_encontrado):
-                FFMPEG_CAMINHO = caminho_encontrado
-                break
-    
-    # Fallback: tenta pasta "bin" diretamente
-    if not FFMPEG_CAMINHO:
-        caminho_padrao = os.path.join(FFMPEG_PASTA, "bin")
-        if os.path.exists(caminho_padrao):
-            FFMPEG_CAMINHO = caminho_padrao
-
-# Última tentativa: busca no PATH do sistema
-if not FFMPEG_CAMINHO:
-    FFMPEG_CAMINHO = None  # Deixa yt-dlp usar o PATH do sistema
+FFMPEG_CAMINHO = resolve_ffmpeg_path()
+AUDIO_FORMATOS = {"mp3", "m4a", "wav", "flac"}
+AUDIO_QUALIDADES = ["320kbps", "256kbps", "192kbps", "128kbps"]
+VIDEO_QUALIDADES = ["Melhor qualidade", "1080p", "720p", "480p"]
 
 def parar_download():
     global PARAR_DOWNLOAD
@@ -57,69 +39,17 @@ def baixar_thread():
     DOWNLOAD_EM_PROGRESSO = True
     
     link = entrada_link.get().strip()
-    if not link:
-        messagebox.showwarning("Aviso", "⚠️ Cole o link do vídeo ou playlist primeiro!")
-        DOWNLOAD_EM_PROGRESSO = False
-        return
-
     formato = escolha_formato.get()
     qualidade = escolha_qualidade.get()
     nome_customizado = entrada_nome.get().strip()
-    
-    # Remove o placeholder da entrada se ainda estiver lá
-    if nome_customizado.startswith("ex:"):
-        nome_customizado = ""
-    
-    # Validar se pasta de saída existe
-    try:
-        os.makedirs(PASTA_SAIDA, exist_ok=True)
-    except:
-        messagebox.showerror("Erro", "Impossível criar pasta de destino")
-        DOWNLOAD_EM_PROGRESSO = False
-        return
 
-    # Define o padrão de nome do arquivo
-    if nome_customizado:
-        # Se o usuário definiu um nome customizado, usa esse
-        outtmpl = os.path.join(PASTA_SAIDA, nome_customizado)
-    else:
-        # Caso contrário, usa o padrão
-        outtmpl = os.path.join(PASTA_SAIDA, "%(title)s.%(ext)s")
-
-    opcoes = {
-        'outtmpl': outtmpl,
-        'noplaylist': True,  # 🛑 NÃO BAIXA PLAYLIST POR PADRÃO
-        'quiet': False,
-        'no_warnings': False,
-    }
-    
-    # Adiciona caminho do FFmpeg se foi encontrado
-    if FFMPEG_CAMINHO:
-        opcoes['ffmpeg_location'] = FFMPEG_CAMINHO
-
-    # 🎧 MODO ÁUDIO
-    if formato in ['mp3', 'm4a', 'wav', 'flac']:
-        opcoes['format'] = 'bestaudio/best'
-        opcoes['postprocessors'] = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': formato,
-            'preferredquality': qualidade.replace('kbps', ''),
-        }]
-
-    # 🎬 MODO VÍDEO
-    else:
-        if qualidade == "Melhor qualidade":
-            opcoes['format'] = 'bestvideo+bestaudio/best'
-            opcoes['merge_output_format'] = formato
-        elif qualidade == "1080p":
-            opcoes['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
-            opcoes['merge_output_format'] = formato
-        elif qualidade == "720p":
-            opcoes['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
-            opcoes['merge_output_format'] = formato
-        elif qualidade == "480p":
-            opcoes['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
-            opcoes['merge_output_format'] = formato
+    request = DownloadRequest(
+        url=link,
+        output_dir=PASTA_SAIDA,
+        media_format=formato,
+        quality=qualidade,
+        custom_name=nome_customizado,
+    )
 
     try:
         janela.config(cursor="wait")
@@ -131,7 +61,7 @@ def baixar_thread():
         # Hook para verificar se o usuário clicou em parar
         def progress_hook(d):
             if PARAR_DOWNLOAD:
-                raise Exception("Download interrompido pelo usuário")
+                raise DownloadCancelled("Download interrompido pelo usuário")
             if d['status'] == 'downloading':
                 percentual = d.get('_percent_str', 'N/A')
                 velocidade = d.get('_speed_str', 'N/A')
@@ -141,10 +71,7 @@ def baixar_thread():
                 texto_status.config(text="📦 Finalizando e convertendo...")
                 janela.update()
 
-        opcoes['progress_hooks'] = [progress_hook]
-
-        with yt_dlp.YoutubeDL(opcoes) as ydl:
-            ydl.download([link])
+        run_download(request, FFMPEG_CAMINHO, progress_hook)
 
         if not PARAR_DOWNLOAD:
             texto_status.config(text=f"✅ Pronto! Salvo em:\n{PASTA_SAIDA}")
@@ -152,12 +79,17 @@ def baixar_thread():
         else:
             texto_status.config(text="🛑 Download interrompido!")
 
+    except DownloadCancelled:
+        texto_status.config(text="🛑 Download interrompido!")
+    except DownloadValidationError as e:
+        texto_status.config(text="⚠️ Verifique os dados informados")
+        messagebox.showwarning("Aviso", str(e))
+    except OSError as e:
+        texto_status.config(text="❌ Erro ao acessar a pasta de destino")
+        messagebox.showerror("Erro", f"Não foi possível preparar a pasta de destino:\n{str(e)}")
     except Exception as e:
-        if "interrompido" in str(e):
-            texto_status.config(text="🛑 Download interrompido!")
-        else:
-            texto_status.config(text="❌ Erro ao baixar")
-            messagebox.showerror("Erro", f"Detalhes:\n{str(e)}")
+        texto_status.config(text="❌ Erro ao baixar")
+        messagebox.showerror("Erro", f"Detalhes:\n{str(e)}")
 
     finally:
         janela.config(cursor="")
@@ -168,6 +100,10 @@ def baixar_thread():
 
 def baixar():
     """Inicia o download em uma thread separada"""
+    if DOWNLOAD_EM_PROGRESSO:
+        messagebox.showwarning("Aviso", "Já existe um download em andamento.")
+        return
+
     thread = threading.Thread(target=baixar_thread, daemon=True)
     thread.start()
 
@@ -237,6 +173,15 @@ if __name__ == "__main__":
     ], state="readonly", width=14)
     escolha_qualidade.set("320kbps")
     escolha_qualidade.grid(row=0, column=3, padx=10)
+
+    def atualizar_qualidades(_event=None):
+        opcoes = AUDIO_QUALIDADES if escolha_formato.get() in AUDIO_FORMATOS else VIDEO_QUALIDADES
+        escolha_qualidade.config(values=opcoes)
+        if escolha_qualidade.get() not in opcoes:
+            escolha_qualidade.set(opcoes[0])
+
+    escolha_formato.bind("<<ComboboxSelected>>", atualizar_qualidades)
+    atualizar_qualidades()
 
     # Botões de Download e Parar
     frame_botoes = ttk.Frame(janela)

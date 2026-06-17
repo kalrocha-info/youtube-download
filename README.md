@@ -18,6 +18,7 @@ Este projeto resolve a necessidade de baixar conteúdos multimídia do YouTube d
 *   **Interface Responsiva (Multi-threading):** O download roda em segundo plano em uma thread secundária de execução, evitando o travamento (congelamento) da GUI.
 *   **Cancelamento sob Demanda:** Botão "Parar" que permite abortar imediatamente um download em andamento de forma limpa.
 *   **Proteção contra Playlists:** Configuração padrão para baixar apenas o vídeo individual referenciado (`noplaylist=True`), prevenindo downloads acidentais de playlists inteiras.
+*   **Validação de Entrada:** Aceita apenas URLs de domínios YouTube/YouTube Music e sanitiza nomes customizados para evitar caracteres inválidos ou caminhos relativos.
 *   **Detecção Automática do FFmpeg:** Mecanismo inteligente de busca do FFmpeg na pasta local `bin/ffmpeg` ou no `PATH` global do sistema.
 
 ---
@@ -74,6 +75,11 @@ pip install -r requirements.txt
 python src/baixador.py
 ```
 
+### 5. Rodar Testes Automatizados
+```powershell
+python -m unittest discover -s tests
+```
+
 ---
 
 ## 📦 Como Compilar em um Executável (.exe)
@@ -105,7 +111,12 @@ YOUTUBE_DOWNLOAD/
 │   └── 📄 ADR-002-...            # Decisão de Arquitetura: Empacotamento do FFmpeg
 │
 ├── 📁 src/                       # Código-fonte
-│   └── 📄 baixador.py            # Script principal da aplicação (Tkinter + yt-dlp)
+│   ├── 📄 baixador.py            # Interface Tkinter e orquestração da aplicação
+│   ├── 📄 downloader.py          # Validação, sanitização e opções do yt-dlp
+│   └── 📄 ffmpeg_locator.py      # Detecção portátil do FFmpeg
+│
+├── 📁 tests/                     # Testes unitários com unittest
+│   └── 📄 test_downloader.py     # Contratos de validação e montagem de opções
 │
 ├── 📁 assets/                    # Recursos visuais (ícones, logos)
 │
