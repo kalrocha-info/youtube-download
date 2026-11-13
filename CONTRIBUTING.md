@@ -32,22 +32,25 @@ O formato padrão de mensagem é:
 
 ## 🌿 Estratégia de Branches (Fluxo Git)
 
-Para organizar o desenvolvimento de forma paralela e segura, adotamos um Git Flow simplificado:
+O fluxo atual usa `main` como branch estável e branches de trabalho para alterações:
 
-1.  **`main`**: Rastreia o código estável em produção. Apenas atualizada via merge de releases testadas.
-2.  **`develop`**: Rastreia a integração contínua de funcionalidades desenvolvidas. É o alvo principal dos Pull Requests.
-3.  **Branches de Trabalho**: Devem ser criadas a partir de `develop` seguindo o padrão de nomenclatura:
+1.  **`main`**: Rastreia o código estável e é o destino dos Pull Requests.
+2.  **Branches de Trabalho**: Devem ser criadas a partir da versão mais recente de `main`, seguindo o padrão:
     *   `feat/[nome-curto]` para novas funcionalidades.
     *   `fix/[nome-curto]` para correção de falhas.
     *   `docs/[nome-curto]` para edições de documentação.
 
 ### Fluxo para envio de alterações:
-1.  Crie uma branch de trabalho a partir de `develop` (`git checkout -b feat/fila-downloads develop`).
-2.  Realize as alterações de código e escreva comentários explicando o **porquê** das lógicas mais complexas.
-3.  Garanta que o script roda localmente sem novos erros.
-4.  Crie commits organizados seguindo a Convenção de Commits.
-5.  Envie a branch para o repositório remoto (`git push origin feat/fila-downloads`).
-6.  Abra um **Pull Request (PR)** da sua branch contra a branch `develop`.
+1.  Atualize `main` e crie uma branch de trabalho:
+    ```powershell
+    git switch main
+    git pull origin main
+    git switch -c docs/atualiza-documentacao
+    ```
+2.  Faça as alterações e os testes relacionados. Comente apenas lógicas que precisem de esclarecimento.
+3.  Crie commits organizados seguindo a Convenção de Commits.
+4.  Publique a branch (`git push -u origin docs/atualiza-documentacao`).
+5.  Abra um **Pull Request (PR)** da branch de trabalho para `main`.
 
 ---
 

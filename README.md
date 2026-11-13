@@ -51,32 +51,42 @@ Siga os passos abaixo no PowerShell ou Prompt de Comando (CMD) do Windows para r
 
 ### 1. Clonar o Repositório
 ```powershell
-git clone https://github.com/[usuario]/YOUTUBE_DOWNLOAD.git
-cd YOUTUBE_DOWNLOAD
+git clone https://github.com/kalrocha-info/youtube-download.git
+cd youtube-download
 ```
 
 ### 2. Criar e Ativar o Ambiente Virtual (Recomendado)
 ```powershell
-# Criação do ambiente virtual na pasta .venv
-python -m venv .venv
+# Cria .venv apenas se ainda não existir
+if (-not (Test-Path ".venv")) { python -m venv .venv }
 
 # Ativação do ambiente no Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 
 # Ativação do ambiente no Windows (CMD)
-.venv\Scripts\activate.bat
+.\.venv\Scripts\activate.bat
 ```
 
 ### 3. Instalar Dependências
 ```powershell
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### 4. Executar o Aplicativo
 ```powershell
 python -m youtube_download
 ```
+
+### Uso do aplicativo
+
+1. Cole a URL de um vídeo do YouTube e escolha o formato e a qualidade.
+2. Opcionalmente, selecione a pasta de destino e informe um nome para o arquivo. Use `%(ext)s` para preservar a extensão escolhida.
+3. Clique em **BAIXAR AGORA**. O progresso e a velocidade aparecem na janela.
+4. Durante o download, **⏸ PAUSAR** suspende a transferência no próximo evento de progresso. O botão passa a **▶ RETOMAR** e continua a mesma transferência.
+5. **🛑 PARAR** cancela o download, inclusive se estiver pausado.
+6. **Abrir pasta de destino** abre no Explorador de Arquivos a pasta selecionada.
+
+Áudio e fusão de faixas de vídeo podem exigir o FFmpeg. O aplicativo tenta localizá-lo em `bin/ffmpeg/` ou no `PATH` do sistema.
 
 ### 5. Rodar Testes Automatizados
 ```powershell
@@ -87,27 +97,25 @@ python -m unittest discover -s tests
 
 ## 📦 Como Compilar em um Executável (.exe)
 
-O projeto usa o `PyInstaller` para empacotar o script Python em um único executável executável para o Windows.
-
-Para compilar de forma portátil:
+O script de build cria/usa `.venv`, atualiza as dependências e chama o PyInstaller:
 
 ```powershell
-pyinstaller --onefile --noconsole --paths src --name="Baixador_YouTube" --icon="assets/icon.ico" src/youtube_download/__main__.py
+.\criar_executavel.ps1
 ```
-> **Nota:** Certifique-se de que a pasta `bin/ffmpeg/` contendo os binários do FFmpeg esteja presente no mesmo diretório do arquivo `.exe` compilado quando for distribuí-lo para computadores que não possuem o FFmpeg no `PATH` do sistema. Veja a documentação técnica sobre isso no [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
+
+O executável é criado em `dist/Baixador_YouTube.exe`. O FFmpeg não é embutido nele: mantenha `bin/ffmpeg/` ao lado do `.exe` para distribuição portátil. Consulte [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
 
 ## 🧰 Como Gerar o Instalador Windows
 
-Após gerar o executável e garantir que `dist/bin/ffmpeg/` exista, gere o instalador com Inno Setup:
+Instale o Inno Setup 6 e execute:
 
 ```powershell
 winget install --id JRSoftware.InnoSetup -e
 .\criar_executavel.ps1
-Copy-Item -Recurse -Force .\bin .\dist\
 .\criar_instalador.ps1
 ```
 
-O instalador final será criado em:
+O script do instalador copia `bin/` para `dist/` se necessário. O instalador é criado em:
 
 ```text
 release/MediaDownloadWindowsSetup_v1.0.0.exe
@@ -140,12 +148,13 @@ YOUTUBE_DOWNLOAD/
 ├── 📁 tests/                     # Testes unitários com unittest
 │   └── 📄 test_downloader.py     # Contratos de validação e montagem de opções
 │
-├── 📁 assets/                    # Recursos visuais (ícones, logos)
-│
 ├── 📁 bin/                       # Ferramentas auxiliares de execução local
 │   └── 📁 ffmpeg/                # Pasta sugerida para o FFmpeg portátil (não rastreado pelo git)
 │
-└── 📁 dist/                      # Diretório de saída dos executáveis após compilação
+├── 📁 installer/                 # Configuração do instalador Inno Setup
+├── 📄 criar_executavel.ps1       # Build do executável com PyInstaller
+├── 📄 criar_instalador.ps1       # Build do instalador Windows
+└── 📁 dist/                      # Saída gerada pelos scripts de build
 ```
 
 ---
