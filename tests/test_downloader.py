@@ -1,7 +1,10 @@
 import os
+from queue import Queue
 import sys
 import tempfile
+from threading import Event, Thread
 import unittest
+from unittest.mock import patch
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -18,6 +21,7 @@ from youtube_download.downloader import (  # noqa: E402
     validate_request,
 )
 from youtube_download.ffmpeg_locator import resolve_ffmpeg_path  # noqa: E402
+from youtube_download.app import abrir_pasta_destino, baixar_thread  # noqa: E402
 
 
 class DownloaderValidationTest(unittest.TestCase):
@@ -109,6 +113,126 @@ class YtdlpOptionsTest(unittest.TestCase):
         )
         self.assertEqual(options["merge_output_format"], "mp4")
         self.assertTrue(options["outtmpl"].endswith("%(title)s.%(ext)s"))
+
+
+class DownloadWorkerTest(unittest.TestCase):
+    def setUp(self):
+        self.request = DownloadRequest(
+            url="https://www.youtube.com/watch?v=abc123",
+            output_dir=tempfile.gettempdir(),
+            media_format="mp3",
+            quality="320kbps",
+        )
+
+    def test_queues_progress_and_completion_events(self):
+        events = Queue()
+        continue_event = Event()
+        continue_event.set()
+
+        def fake_download(_request, _ffmpeg_path, progress_hook):
+            progress_hook({
+                "status": "downloading",
+                "_percent_str": "50%",
+                "_speed_str": "1MiB/s",
+            })
+            progress_hook({"status": "finished"})
+
+        with patch("youtube_download.app.run_download", side_effect=fake_download):
+            baixar_thread(self.request, Event(), continue_event, events)
+
+        queued_events = [events.get_nowait() for _ in range(events.qsize())]
+        self.assertEqual(
+            [event for event, _ in queued_events],
+            ["progress", "progress", "success", "complete"],
+        )
+        self.assertIn("50%", queued_events[0][1])
+
+    def test_queues_cancellation_when_requested(self):
+        events = Queue()
+        cancel_event = Event()
+        cancel_event.set()
+        continue_event = Event()
+        continue_event.set()
+
+        def fake_download(_request, _ffmpeg_path, progress_hook):
+            progress_hook({"status": "downloading"})
+
+        with patch("youtube_download.app.run_download", side_effect=fake_download):
+            baixar_thread(self.request, cancel_event, continue_event, events)
+
+        queued_events = [events.get_nowait() for _ in range(events.qsize())]
+        self.assertEqual(
+            [event for event, _ in queued_events],
+            ["cancelled", "complete"],
+        )
+
+    def test_pauses_at_progress_hook_until_resumed(self):
+        events = Queue()
+        cancel_event = Event()
+        continue_event = Event()
+        download_started = Event()
+
+        def fake_download(_request, _ffmpeg_path, progress_hook):
+            download_started.set()
+            progress_hook({"status": "downloading"})
+
+        with patch("youtube_download.app.run_download", side_effect=fake_download):
+            worker = Thread(
+                target=baixar_thread,
+                args=(self.request, cancel_event, continue_event, events),
+            )
+            worker.start()
+            self.assertTrue(download_started.wait(timeout=1))
+            self.assertEqual(events.get(timeout=1)[0], "paused")
+            self.assertTrue(worker.is_alive())
+
+            continue_event.set()
+            worker.join(timeout=1)
+
+        self.assertFalse(worker.is_alive())
+        queued_events = [events.get_nowait() for _ in range(events.qsize())]
+        self.assertEqual(
+            [event for event, _ in queued_events],
+            ["resumed", "progress", "success", "complete"],
+        )
+
+    def test_cancellation_releases_a_paused_worker(self):
+        events = Queue()
+        cancel_event = Event()
+        continue_event = Event()
+
+        def fake_download(_request, _ffmpeg_path, progress_hook):
+            progress_hook({"status": "downloading"})
+
+        with patch("youtube_download.app.run_download", side_effect=fake_download):
+            worker = Thread(
+                target=baixar_thread,
+                args=(self.request, cancel_event, continue_event, events),
+            )
+            worker.start()
+            self.assertEqual(events.get(timeout=1)[0], "paused")
+            cancel_event.set()
+            continue_event.set()
+            worker.join(timeout=1)
+
+        self.assertFalse(worker.is_alive())
+        queued_events = [events.get_nowait() for _ in range(events.qsize())]
+        self.assertEqual(
+            [event for event, _ in queued_events],
+            ["cancelled", "complete"],
+        )
+
+
+class DestinationFolderTest(unittest.TestCase):
+    def test_opens_selected_destination_folder(self):
+        with tempfile.TemporaryDirectory() as output_dir:
+            with (
+                patch("youtube_download.app.PASTA_SAIDA", output_dir),
+                patch("youtube_download.app.os.startfile", create=True) as startfile,
+            ):
+                abrir_pasta_destino()
+
+        startfile.assert_called_once_with(output_dir)
 
 
 class FfmpegLocatorTest(unittest.TestCase):

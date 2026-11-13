@@ -16,7 +16,9 @@ Este projeto resolve a necessidade de baixar conteúdos multimídia do YouTube d
 *   **Extração de Áudio:** Conversão direta para **MP3**, **M4A**, **WAV** e **FLAC** com taxa de amostragem configurável (320kbps, 256kbps, 192kbps e 128kbps).
 *   **Renomeação Customizada:** Opção de renomear o arquivo de saída antes do download, com suporte ao marcador dinâmico de extensão `%(ext)s`.
 *   **Interface Responsiva (Multi-threading):** O download roda em segundo plano em uma thread secundária de execução, evitando o travamento (congelamento) da GUI.
-*   **Cancelamento sob Demanda:** Botão "Parar" que permite abortar imediatamente um download em andamento de forma limpa.
+*   **Pausar e Retomar:** Um botão alterna entre pausar e retomar o download, mantendo a transferência aberta e continuando do ponto atual.
+*   **Cancelamento sob Demanda:** Botão "Parar" que interrompe o download em andamento e também encerra uma pausa.
+*   **Acesso à Pasta de Destino:** Botão para abrir diretamente no Explorador a pasta selecionada para salvar os arquivos.
 *   **Proteção contra Playlists:** Configuração padrão para baixar apenas o vídeo individual referenciado (`noplaylist=True`), prevenindo downloads acidentais de playlists inteiras.
 *   **Validação de Entrada:** Aceita apenas URLs de domínios YouTube/YouTube Music e sanitiza nomes customizados para evitar caracteres inválidos ou caminhos relativos.
 *   **Detecção Automática do FFmpeg:** Mecanismo inteligente de busca do FFmpeg na pasta local `bin/ffmpeg` ou no `PATH` global do sistema.
