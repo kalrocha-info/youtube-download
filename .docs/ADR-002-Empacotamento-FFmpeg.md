@@ -27,7 +27,7 @@ O FFmpeg para Windows (build completa) pesa em média **400 MB+**. Commitar este
 ## Alternativas Consideradas
 
 ### Opção 1: Bundling Total no Executável via PyInstaller (`--add-data`)
-Compilar o FFmpeg diretamente dentro do arquivo único `Baixador_YouTube.exe`. Durante a inicialização, o PyInstaller extrai temporariamente o FFmpeg para o diretório `_MEIPASS` no disco do usuário e aponta a execução para lá.
+Compilar o FFmpeg diretamente dentro do arquivo único `CASR_Media_Download.exe`. Durante a inicialização, o PyInstaller extrai temporariamente o FFmpeg para o diretório `_MEIPASS` no disco do usuário e aponta a execução para lá.
 
 *   **Prós:**
     *   Gera um arquivo único `.exe` final absoluto que funciona sozinho.
@@ -76,7 +76,7 @@ O repositório Git ignora explicitamente a pasta `bin/ffmpeg/` no arquivo `.giti
 ### Positivas:
 *   Histórico do Git preservado e leve.
 *   O aplicativo final inicia instantaneamente.
-*   Portabilidade de execução garantida se empacotado em estrutura zip (ex: `Baixador_YouTube_v1.0.zip` contendo o `.exe` e a subpasta `bin/ffmpeg`).
+*   Portabilidade de execução garantida se empacotado em estrutura zip contendo o `.exe` e a subpasta `bin/ffmpeg`.
 
 ### Negativas / Riscos:
 *   A distribuição exige um arquivo compactado `.zip` em vez de um `.exe` isolado, o que requer uma instrução clara de download e extração para o usuário final no README.

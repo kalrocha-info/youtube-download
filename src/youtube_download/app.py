@@ -1,11 +1,13 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
+import sys
 from queue import Empty, Queue
 from threading import Event, Thread
 
 from youtube_download.downloader import (
     DownloadCancelled,
+    DownloadDestinationError,
     DownloadRequest,
     DownloadValidationError,
     run_download,
@@ -27,6 +29,16 @@ FFMPEG_CAMINHO = resolve_ffmpeg_path()
 AUDIO_FORMATOS = {"mp3", "m4a", "wav", "flac"}
 AUDIO_QUALIDADES = ["320kbps", "256kbps", "192kbps", "128kbps"]
 VIDEO_QUALIDADES = ["Melhor qualidade", "1080p", "720p", "480p"]
+
+
+def caminho_recurso(caminho):
+    base_dir = getattr(
+        sys,
+        "_MEIPASS",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
+    )
+    return os.path.join(base_dir, caminho)
+
 
 def parar_download():
     if not DOWNLOAD_EM_PROGRESSO:
@@ -55,6 +67,11 @@ def alternar_pausa_download():
 
 def baixar_thread(request, cancel_event, continue_event, event_queue):
     try:
+        def confirm_overwrite(output_path):
+            response_queue = Queue(maxsize=1)
+            event_queue.put(("confirm_overwrite", (output_path, response_queue)))
+            return response_queue.get()
+
         def progress_hook(d):
             if cancel_event.is_set():
                 raise DownloadCancelled("Download interrompido pelo usuário")
@@ -73,15 +90,17 @@ def baixar_thread(request, cancel_event, continue_event, event_queue):
             elif d['status'] == 'finished':
                 event_queue.put(("progress", "📦 Finalizando e convertendo..."))
 
-        run_download(request, FFMPEG_CAMINHO, progress_hook)
+        run_download(request, FFMPEG_CAMINHO, progress_hook, confirm_overwrite)
         event_queue.put(("success", f"✅ Pronto! Salvo em:\n{request.output_dir}"))
 
     except DownloadCancelled:
         event_queue.put(("cancelled", "🛑 Download interrompido!"))
     except DownloadValidationError as e:
         event_queue.put(("validation_error", str(e)))
-    except OSError as e:
+    except DownloadDestinationError as e:
         event_queue.put(("os_error", str(e)))
+    except OSError as e:
+        event_queue.put(("download_error", str(e)))
     except Exception as e:
         event_queue.put(("download_error", str(e)))
     finally:
@@ -120,6 +139,15 @@ def processar_eventos_download():
         elif event == "download_error":
             texto_status.config(text="❌ Erro ao baixar")
             messagebox.showerror("Erro", f"Detalhes:\n{value}")
+        elif event == "confirm_overwrite":
+            output_path, response_queue = value
+            overwrite = messagebox.askyesno(
+                "Arquivo existente",
+                f"Já existe um arquivo com este nome:\n\n{output_path}\n\n"
+                "Deseja substituí-lo? Se escolher Não, o download será cancelado.",
+                parent=janela,
+            )
+            response_queue.put(overwrite)
         elif event == "complete":
             janela.config(cursor="")
             btn_baixar.config(state="normal")
@@ -187,12 +215,13 @@ def main():
     global entrada_link, entrada_nome, janela, texto_caminho, texto_status
 
     janela = tk.Tk()
-    janela.title("🎵 Baixador YouTube - Pacote Completo")
+    janela.title("CASR Media Download")
+    janela.iconbitmap(caminho_recurso(os.path.join("resources", "casr_media_download.ico")))
     janela.geometry("750x550")
     janela.resizable(False, False)
 
     # Título
-    titulo = ttk.Label(janela, text="Baixador de Vídeos e Músicas", font=("Arial", 15, "bold"))
+    titulo = ttk.Label(janela, text="CASR Media Download", font=("Arial", 15, "bold"))
     titulo.pack(pady=15)
 
     # Campo do Link

@@ -1,6 +1,6 @@
-# Guia de Contribuição: Baixador YouTube
+# Guia de Contribuição: CASR Media Download
 
-Agradecemos por seu interesse em contribuir para o projeto **Baixador YouTube**! Para manter a qualidade do código, a legibilidade do histórico de alterações e a estabilidade do produto, estabelecemos as seguintes diretrizes.
+Agradecemos por seu interesse em contribuir para o projeto **CASR Media Download**! Para manter a qualidade do código, a legibilidade do histórico de alterações e a estabilidade do produto, estabelecemos as seguintes diretrizes.
 
 ---
 
