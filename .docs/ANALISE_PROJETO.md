@@ -64,9 +64,9 @@ O worker não atualiza widgets Tkinter. Ele coloca eventos em uma fila; a thread
 
 ## Diagnóstico do WinError 448
 
-O usuário relatou que downloads em MP3 falhavam imediatamente, tanto em `%USERPROFILE%\OneDrive\Music` quanto em `%USERPROFILE%\Downloads`, com o erro apontando para `C:\tools\nodejs`. Esse caminho é um link simbólico do NVM, não a pasta de destino.
+Foi identificado que downloads em MP3 falhavam quando o `PATH` do Windows incluía um caminho do NVM e a saída era direcionada a pastas do usuário. O erro vinha da resolução desse caminho, não da pasta de destino.
 
-O `yt-dlp` busca o runtime JavaScript Deno por padrão e, na busca automática, resolve os diretórios do `PATH`; isso pode falhar ao atravessar o link do NVM no executável instalado. O aplicativo agora passa caminhos explícitos dos runtimes disponíveis ao `yt-dlp` e desativa a busca implícita quando nenhum é encontrado. Erros de sistema não relacionados à criação da pasta também deixaram de ser apresentados como falha do destino.
+O `yt-dlp` busca o runtime JavaScript Deno por padrão e, na busca automática, resolve os diretórios do `PATH`; isso pode falhar ao atravessar links do NVM no executável instalado. O aplicativo agora passa caminhos explícitos dos runtimes disponíveis ao `yt-dlp` e desativa a busca implícita quando nenhum é encontrado. Erros de sistema não relacionados à criação da pasta também deixaram de ser apresentados como falha do destino.
 
 ## Validação registrada
 
