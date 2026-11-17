@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -17,6 +18,10 @@ class DownloadCancelled(Exception):
 
 class DownloadValidationError(ValueError):
     """Raised when a download request is invalid."""
+
+
+class DownloadDestinationError(OSError):
+    """Raised when the selected output directory cannot be prepared."""
 
 
 @dataclass(frozen=True)
@@ -79,10 +84,22 @@ def validate_request(request):
         raise DownloadValidationError("Qualidade de vídeo inválida para o formato escolhido.")
 
 
+def _get_js_runtime_options():
+    return {
+        name: {"path": path}
+        for name in ("deno", "node", "quickjs", "bun")
+        if (path := shutil.which(name))
+    }
+
+
 def build_ytdlp_options(request, ffmpeg_path=None, progress_hook=None):
     validate_request(request)
 
-    os.makedirs(request.output_dir, exist_ok=True)
+    try:
+        os.makedirs(request.output_dir, exist_ok=True)
+    except OSError as e:
+        raise DownloadDestinationError(str(e)) from e
+
     custom_name = sanitize_filename_template(request.custom_name)
     filename_template = custom_name or "%(title)s.%(ext)s"
 
@@ -91,6 +108,8 @@ def build_ytdlp_options(request, ffmpeg_path=None, progress_hook=None):
         "noplaylist": True,
         "quiet": False,
         "no_warnings": False,
+        # Avoid yt-dlp resolving every PATH entry, which can fail on Windows reparse points.
+        "js_runtimes": _get_js_runtime_options(),
     }
 
     if ffmpeg_path:
@@ -122,9 +141,45 @@ def build_ytdlp_options(request, ffmpeg_path=None, progress_hook=None):
     return options
 
 
-def run_download(request, ffmpeg_path=None, progress_hook=None):
+def _get_final_output_path(ytdlp, info_dict, request):
+    output_path = ytdlp.prepare_filename(info_dict)
+    if not output_path:
+        return ""
+
+    if request.media_format in AUDIO_FORMATS or info_dict.get("requested_formats"):
+        filename, _ = os.path.splitext(output_path)
+        output_path = f"{filename}.{request.media_format}"
+
+    return output_path
+
+
+def run_download(request, ffmpeg_path=None, progress_hook=None, confirm_overwrite=None):
     import yt_dlp
 
     options = build_ytdlp_options(request, ffmpeg_path, progress_hook)
+    overwrite_declined = False
+
+    if confirm_overwrite:
+        def match_filter(info_dict, *, incomplete=False):
+            nonlocal overwrite_declined
+
+            if incomplete:
+                return None
+
+            output_path = _get_final_output_path(ydl, info_dict, request)
+            if output_path and os.path.exists(output_path):
+                if confirm_overwrite(output_path):
+                    return None
+
+                overwrite_declined = True
+                return "O usuário recusou substituir o arquivo existente."
+
+            return None
+
+        options["match_filter"] = match_filter
+
     with yt_dlp.YoutubeDL(options) as ydl:
         ydl.download([request.url.strip()])
+
+    if overwrite_declined:
+        raise DownloadCancelled("Download cancelado porque o arquivo já existe.")

@@ -1,469 +1,109 @@
-# 📊 Análise Completa do Projeto Baixador YouTube
+# Estado atual do projeto
 
-**Data:** 13 de junho de 2026  
-**Versão:** 1.0  
-**Status:** Em Desenvolvimento
+**Revisado em:** 14 de novembro de 2026
+**Versão do pacote:** 1.0.0
+**Produto:** CASR Media Download
+**Estado:** MVP funcional; identidade visual e instalador atualizados.
 
----
+## Resumo
 
-## 📑 Índice
+Aplicativo desktop para Windows, feito em Python/Tkinter, que usa `yt-dlp` para baixar vídeos ou extrair áudio do YouTube. O download acontece em uma thread de trabalho; os eventos de progresso são encaminhados à thread da interface. A transferência pode ser pausada e retomada sem iniciar uma nova operação, e a pasta de destino pode ser aberta pelo aplicativo.
 
-1. [Estado Atual](#estado-atual)
-2. [Estrutura do Projeto](#estrutura-do-projeto)
-3. [Lógica de Funcionamento](#lógica-de-funcionamento)
-4. [Governança](#governança)
-5. [Segurança](#segurança)
-6. [Planificação](#planificação)
-7. [Recomendações](#recomendações)
+| Área | Estado atual |
+|---|---|
+| Download de vídeo e extração de áudio | Implementado |
+| Validação de URLs e sanitização do nome de arquivo | Implementado |
+| Progresso e cancelamento | Implementado |
+| Pausar e retomar | Implementado e coberto por testes automatizados |
+| Confirmação ao substituir arquivo existente | Implementado; pergunta antes de iniciar a transferência |
+| Detecção de instalação anterior | Implementado; permite reinstalar na mesma pasta ou escolher outra |
+| Identidade visual CASR | Implementada na janela, no executável e no instalador |
+| Abrir pasta de destino | Implementado; usa o Explorador de Arquivos do Windows |
+| Busca pelo FFmpeg portátil ou no `PATH` | Implementado |
+| Build do executável e instalador Windows | Reconstruídos; falta validação manual do instalador e dos novos avisos |
 
----
+## Fluxo de uso
 
-## 🔍 Estado Atual
+1. Informe uma URL individual do YouTube e selecione o formato e a qualidade.
+2. Opcionalmente, escolha a pasta de destino e um nome personalizado.
+3. Inicie o download. Se o arquivo final já existir, confirme se deseja substituí-lo; ao recusar, o download é cancelado.
+4. O estado e o progresso são exibidos na janela.
+5. **Pausar** suspende a thread no próximo callback de progresso do `yt-dlp`; **Retomar** libera essa mesma operação.
+6. **Parar** sinaliza o cancelamento. Se o download estiver pausado, também libera a thread para que o cancelamento seja concluído.
+7. **Abrir pasta de destino** abre a pasta selecionada no Explorador do Windows.
 
-### Versão & Ambiente
-- **Linguagem:** Python 3.x
-- **Framework UI:** Tkinter (built-in)
-- **Dependências Principais:** yt-dlp, PyInstaller, FFmpeg 7.1
-- **Plataforma:** Windows (otimizado para PowerShell)
-- **Status:** Funcional com melhorias recentes
+Ao encontrar uma instalação anterior, o instalador oferece removê-la e reinstalar na mesma pasta ou removê-la e permitir a escolha de outra pasta. A instalação anterior é removida antes da nova instalação; não são mantidas cópias lado a lado.
 
-### Funcionalidades Implementadas ✅
+A pausa é cooperativa: ela é aplicada quando o `yt-dlp` chama o callback de progresso. Não encerra nem recria o download. Áudio e a combinação de faixas de vídeo podem exigir o FFmpeg.
 
-| Funcionalidade | Status | Descrição |
-|---|---|---|
-| Download de vídeos | ✅ Completo | Suporta múltiplas qualidades |
-| Download de áudio | ✅ Completo | MP3, M4A, WAV, FLAC |
-| Interface Gráfica | ✅ Completo | Tkinter com 750x550px |
-| Seleção de pasta | ✅ Completo | Filedialog para destino |
-| Nome customizado | ✅ Novo | Permite renomear arquivos |
-| Botão de parar | ✅ Novo | Interrompe downloads |
-| Proteção playlist | ✅ Novo | noplaylist=True por padrão |
-| Progresso em tempo real | ✅ Novo | Exibe % e velocidade |
-| Detecção FFmpeg | ✅ Completo | Auto-detecta em bin/ffmpeg/ |
-| Validação de URL | ✅ Novo | Aceita domínios YouTube/YouTube Music |
-| Sanitização de nome | ✅ Novo | Remove caracteres inválidos e separadores de caminho |
+## Organização técnica
 
-### Problemas Corrigidos 🔧
+| Caminho | Responsabilidade |
+|---|---|
+| `src/youtube_download/app.py` | Interface Tkinter, identidade visual CASR, thread e encaminhamento de eventos |
+| `src/youtube_download/downloader.py` | Validação da URL, sanitização do nome, opções e execução do `yt-dlp` |
+| `src/youtube_download/ffmpeg_locator.py` | Localização do FFmpeg |
+| `resources/casr_media_download.svg` e `.ico` | Ícone vetorial e arquivo usado pela aplicação e pelo instalador |
+| `tests/test_downloader.py` | Testes de validação, opções, eventos, pausa/retomada, cancelamento e pasta de destino |
+| `criar_executavel.ps1` | Instala/atualiza dependências na `.venv` e gera o executável com PyInstaller |
+| `criar_instalador.ps1` | Gera o instalador com Inno Setup e inclui o FFmpeg portátil quando disponível |
+| `installer/` | Configuração do instalador Inno Setup |
 
-1. ✅ **URL FFmpeg inválida** → Corrigida para v7.1 específica
-2. ✅ **Caminho FFmpeg incorreto** → Auto-detecta pasta extraída
-3. ✅ **Download de playlist inteira** → Protegido com noplaylist
-4. ✅ **Interface congelada** → Threading implementado
-5. ✅ **Sem validação de pasta** → Validação e criação automática
+### Comunicação com a interface
 
----
+O worker não atualiza widgets Tkinter. Ele coloca eventos em uma fila; a thread principal consome a fila usando `after()` e atualiza o progresso, o status e os botões. A pausa e o cancelamento são coordenados por `threading.Event`.
 
-## 📁 Estrutura do Projeto
+## Dependências e execução
 
-```
-YOUTUBE_DOWNLOAD/
-│
-├── 📄 README.md                          # Documentação principal
-├── 📄 requirements.txt                   # Dependências Python
-├── 📄 criar_estrutura.ps1                # Script de setup (PowerShell)
-│
-├── 📁 .docs/                             # Documentação
-│   └── 📄 ANALISE_PROJETO.md            # Este arquivo
-│
-├── 📁 src/
-│   └── 📁 youtube_download/
-│       ├── 📄 __main__.py                # Entrypoint do pacote
-│       ├── 📄 app.py                     # Interface Tkinter e orquestração
-│       ├── 📄 downloader.py              # Validação, sanitização e yt-dlp
-│       └── 📄 ffmpeg_locator.py          # Resolução portátil do FFmpeg
-│
-├── 📁 tests/
-│   └── 📄 test_downloader.py             # Testes unitários do núcleo
-│
-├── 📁 assets/
-│   └── 📁 (ícones, imagens, recursos)
-│
-├── 📁 bin/
-│   └── 📁 ffmpeg/
-│       └── 📁 ffmpeg-7.1-full_build/
-│           ├── 📁 bin/
-│           │   ├── ffmpeg.exe
-│           │   ├── ffplay.exe
-│           │   └── ffprobe.exe
-│           ├── 📁 doc/
-│           └── 📁 presets/
-│
-├── 📁 dist/                              # Executáveis (após build)
-│   └── 📄 Baixador_YouTube.exe          # App final
-│
-└── 📁 build/                             # Cache de build (PyInstaller)
-```
+- Windows; Python 3.10 ou superior.
+- Dependência de execução: `yt-dlp>=2026.3.14`, conforme `pyproject.toml`.
+- PyInstaller é dependência opcional de desenvolvimento/build.
+- FFmpeg é necessário para conversão de áudio e para combinar faixas separadas de vídeo e áudio. Pode estar em `bin/ffmpeg/` ou no `PATH`.
+- O aplicativo pode ser iniciado em ambiente de desenvolvimento com `python -m youtube_download`.
+- O projeto usa uma única `.venv` na raiz; os scripts de build também reutilizam esse ambiente ou o criam se estiver ausente.
 
-### Tamanho & Métricas
+## Diagnóstico do WinError 448
 
-- **Linhas de código:** núcleo distribuído entre `app.py`, `downloader.py` e `ffmpeg_locator.py`
-- **Dependências:** 3 principais (yt-dlp, tkinter, os)
-- **FFmpeg:** 430 MB (completo + build tools)
-- **Tamanho esperado EXE:** 150-200 MB (com FFmpeg bundled)
+Foi identificado que downloads em MP3 falhavam quando o `PATH` do Windows incluía um caminho do NVM e a saída era direcionada a pastas do usuário. O erro vinha da resolução desse caminho, não da pasta de destino.
 
----
+O `yt-dlp` busca o runtime JavaScript Deno por padrão e, na busca automática, resolve os diretórios do `PATH`; isso pode falhar ao atravessar links do NVM no executável instalado. O aplicativo agora passa caminhos explícitos dos runtimes disponíveis ao `yt-dlp` e desativa a busca implícita quando nenhum é encontrado. Erros de sistema não relacionados à criação da pasta também deixaram de ser apresentados como falha do destino.
 
-## ⚙️ Lógica de Funcionamento
+## Validação registrada
 
-### Fluxo de Execução
+- 21 testes automatizados passaram, incluindo os novos fluxos de confirmação e cancelamento de substituição.
+- Ruff e `git diff --check` passaram.
+- Tkinter carregou o ícone multirresolução e o executável e o instalador incorporaram ícones de 32x32.
+- Um teste real de download produziu um MP4 em 480p usando `yt-dlp 2026.10.26` e FFmpeg. Em uma tentativa anterior, `yt-dlp 2026.6.9` recebeu HTTP 403; esse resultado isolado não determina que a versão antiga falhe em todos os ambientes.
+- O usuário confirmou os fluxos de vídeo, áudio, interrupção e retomada em versões anteriores. A confirmação de arquivo existente e a nova identidade visual ainda precisam de validação manual na instalação.
+- O novo `.exe` iniciou e permaneceu ativo por cinco segundos no smoke test.
+- O instalador foi compilado pelo Inno Setup 6.7.3. O ZIP portátil não foi reconstruído nesta alteração.
+- Artefatos de identidade visual: `dist\CASR_Media_Download.exe` (20.729.251 bytes), `release\CASRMediaDownloadSetup_v1.0.0.exe` (158.569.247 bytes) e `resources\casr_media_download.ico`.
+- Os testes automatizados e o smoke test não substituem a validação de instalação e uso em um Windows limpo.
 
-```mermaid
-graph TD
-    A[Usuário abre app] --> B[Carrega configurações]
-    B --> C[Detecta FFmpeg]
-    C --> D[Exibe interface]
-    D --> E{Usuário clica em Baixar?}
-    E -->|Não| D
-    E -->|Sim| F[Valida entrada]
-    F --> G{Link válido?}
-    G -->|Não| H[Mostra erro]
-    H --> D
-    G -->|Sim| I[Cria thread de download]
-    I --> J[Inicia download]
-    J --> K{Progress hook}
-    K -->|Baixando| L[Atualiza % e velocidade]
-    L --> M{Parou?}
-    M -->|Sim| N[Interrompe]
-    M -->|Não| K
-    N --> O[Download finalizado]
-    O --> P[Mostra sucesso]
-    P --> D
-```
+Comandos de validação:
 
-### Componentes Principais
-
-#### 1. **Inicialização (linhas 1-45)**
-```python
-- Importa módulos necessários
-- Define variáveis globais (PASTA_SAIDA, PARAR_DOWNLOAD)
-- Detecta caminho do FFmpeg automaticamente
-- Busca em: bin/ffmpeg/ffmpeg-*-full_build/bin/
-- Fallback: bin/ffmpeg/bin/ ou PATH do sistema
-```
-
-#### 2. **Controle de Download (linhas 48-90)**
-```python
-- parar_download(): Seta flag PARAR_DOWNLOAD = True
-- baixar_thread(): Thread principal do download
-  - Valida link
-  - Cria pasta de saída
-  - Configura opções do yt-dlp
-  - Aplica hooks de progresso
-  - Trata exceções
-```
-
-#### 3. **Configuração de Formato (linhas 80-100)**
-```python
-MODO ÁUDIO:
-  - Formatos: MP3, M4A, WAV, FLAC
-  - Qualidades: 320kbps, 256kbps, 192kbps, 128kbps
-  - Usa FFmpegExtractAudio para conversão
-
-MODO VÍDEO:
-  - Formatos: MP4, WebM (mkv removido)
-  - Qualidades: 1080p, 720p, 480p, Melhor
-  - Usa merge_output_format para conversão
-```
-
-#### 4. **Interface (linhas 180-270)**
-```python
-- Campos de entrada: Link, Nome customizado
-- Seletores: Formato, Qualidade
-- Botões: Baixar, Parar, Escolher pasta
-- Status: Feedback em tempo real
-- Labels: Instruções e dicas
-```
-
----
-
-## 🏛️ Governança
-
-### Responsabilidades & Ownership
-
-| Componente | Owner | Responsabilidade |
-|---|---|---|
-| **Backend (youtube_download/downloader.py)** | Desenvolvedor Python | Validação, downloads e integração com yt-dlp |
-| **UI (Tkinter)** | Dev Front-end | Interface, UX, validações |
-| **FFmpeg** | DevOps/Admin | Instalação, manutenção, updates |
-| **Dependências** | Tech Lead | requirements.txt, versões |
-| **Docs** | Tech Writer | .docs/, README, comentários |
-| **Build/Deploy** | DevOps | PyInstaller, .exe, distribuição |
-
-### Versionamento
-
-- **Semântico:** MAJOR.MINOR.PATCH
-- **Atual:** 1.0.0 (MVP + melhorias)
-- **Próxima:** 1.1.0 (empacotamento .exe)
-
-### Processo de Mudança
-
-1. ✅ Análise de requisito
-2. ✅ Design/Planejamento
-3. ✅ Implementação em branch
-4. ✅ Testes funcionalidade
-5. ✅ Code review (se equipe)
-6. ✅ Merge e release
-7. ✅ Documentação atualizada
-
----
-
-## 🔐 Segurança
-
-### Análise de Riscos
-
-#### 🔴 **Crítico**
-
-| Risco | Impacto | Mitigação |
-|---|---|---|
-| **Injeção de URL maliciosa** | Código malicioso via yt-dlp | ✅ Validação de link com regex |
-| **Execução não autorizada de FFmpeg** | RCE local | ✅ FFmpeg em pasta controlada |
-| **Pasta de output sem permissão** | Crash, dados perdidos | ✅ os.makedirs + try/except |
-
-#### 🟡 **Médio**
-
-| Risco | Impacto | Mitigação |
-|---|---|---|
-| **Sem controle de tamanho arquivo** | Disco cheio | 🔄 TODO: Adicionar limite |
-| **Sem compressão/criptografia** | Arquivo baixado visível | 🔄 Depende do caso de uso |
-| **Nome customizado inseguro** | Path traversal | ✅ Sanitização no núcleo |
-| **Sem rate limiting** | Abuso de API YouTube | 🔄 yt-dlp já limita internamente |
-
-#### 🟢 **Baixo**
-
-| Risco | Impacto | Mitigação |
-|---|---|---|
-| **Sem criptografia de comunicação** | Sniffing (baixa exposição) | ℹ️ YouTube usa HTTPS |
-| **Sem autenticação do app** | Acesso universal | ℹ️ App local, sem servidor |
-
-### Boas Práticas Implementadas ✅
-
-```python
-✅ Uso de try/except para capturar exceções
-✅ Validação de entrada com domínio YouTube/YouTube Music
-✅ Sanitização de nomes customizados
-✅ Uso de global para controlar estado
-✅ Threading para não bloquear UI
-✅ Detecção segura de caminhos (os.path.join)
-✅ Tratamento de PARAR_DOWNLOAD para cancel seguro
-✅ Messages de erro descritivos (messagebox)
-```
-
-### Recomendações de Segurança 🛡️
-
-1. **Limitar tamanho de download:**
-   ```python
-   MAX_SIZE_MB = 1000
-   if tamanho > MAX_SIZE_MB * 1024 * 1024:
-       raise Exception("Arquivo muito grande")
-   ```
-
-2. **Adicionar logging de eventos:**
-   ```python
-   import logging
-   logger = logging.getLogger(__name__)
-   logger.info(f"Download iniciado: {link}")
-   ```
-
-3. **Versionamento de dependências:**
-   ```txt
-   yt-dlp>=2026.3.14
-   pyinstaller>=6.10.0
-   ```
-
----
-
-## 📋 Planificação
-
-### Roadmap de Desenvolvimento
-
-#### **Fase 1: MVP Desktop (Atual)** ✅
-- [x] Estrutura básica
-- [x] Download vídeo/áudio
-- [x] Interface Tkinter
-- [x] Botão parar
-- [x] Nome customizado
-- [x] Proteção playlist
-
-**Timeline:** Junho 2026  
-**Status:** Completo
-
----
-
-#### **Fase 2: Empacotamento & Release (Próximo)** 🔄
-- [ ] Criar ícone customizado
-- [ ] Gerar executável PyInstaller
-- [ ] Testar .exe em múltiplos PCs
-- [ ] Criar instalador NSIS (.msi)
-- [ ] Publicar versão 1.0.0
-
-**Timeline:** Junho 2026  
-**Esforço:** 2-3 dias
-
-**Tarefas:**
 ```powershell
-# T1: Criar icon.ico (buscar/desenhar)
-# T2: Compilar com PyInstaller (4h)
-# T3: Teste funcionalidade (2h)
-# T4: Criar instalador NSIS (3h)
-# T5: Documentar release (1h)
+python -m unittest discover -s tests
+python -m compileall -q src\youtube_download
+ruff check src tests
 ```
 
----
+## Build e distribuição
 
-#### **Fase 3: Melhorias & Features (Q3 2026)** 📈
-- [ ] Histórico de downloads
-- [ ] Fila de downloads
-- [ ] Conversão pós-download
-- [ ] Limite de tamanho arquivo
-- [ ] Logging automático
-- [ ] Modo escuro/claro
-- [ ] Suporte multi-idioma
+1. Instale Python 3.10+ e, para o instalador, Inno Setup 6.
+2. Execute `.\criar_executavel.ps1`. O executável será gerado em `dist\CASR_Media_Download.exe`.
+3. Para uma distribuição portátil, mantenha `bin\ffmpeg\` junto do executável. O FFmpeg não é embutido no `.exe`.
+4. Execute `.\criar_instalador.ps1`. O script procura o Inno Setup, copia `bin\` para `dist\` se necessário e gera `release\CASRMediaDownloadSetup_v1.0.0.exe`.
+5. Antes de publicar, teste a instalação e os controles de download em um Windows limpo.
 
-**Timeline:** Julho-Setembro 2026  
-**Prioridade:** Média
+## Próximos passos
 
----
+- Validar manualmente download, pausa, retomada e cancelamento durante uma pausa na interface empacotada.
+- Testar a instalação e abertura do aplicativo em um Windows limpo.
+- Considerar, para versões futuras, fila e histórico de downloads; não fazem parte do MVP atual.
 
-#### **Fase 4: Distribuição & Marketing (Q4 2026)** 🚀
-- [ ] Publicar em GitHub
-- [ ] Criar página de download
-- [ ] Adicionar AV (antivírus) signature
-- [ ] Suporte a auto-update
-- [ ] Tradução: PT, EN, ES
+## Documentação relacionada
 
-**Timeline:** Outubro-Dezembro 2026  
-**Prioridade:** Baixa
-
----
-
-### Métricas de Sucesso
-
-| Métrica | Alvo | Atual |
-|---|---|---|
-| **Tempo download/min** | <5s | ~2s ✅ |
-| **Taxa sucesso** | >95% | ~98% ✅ |
-| **Erro detectado** | 0 crashes | 0 ✅ |
-| **Cobertura docs** | 100% | 80% 🔄 |
-| **Teste compatibilidade** | Win7+ | Win10+ ✅ |
-
----
-
-## 💡 Recomendações
-
-### Curto Prazo (1-2 semanas)
-
-1. **Logging de eventos**
-   - Arquivo de log em .logs/
-   - Registrar erros e sucessos
-   - Prioridade: 🟡 Média
-
-### Médio Prazo (1-3 meses)
-
-4. **Histórico de downloads**
-   - Banco de dados SQLite local
-   - Lista de últimos 50 downloads
-   - Prioridade: 🟡 Média
-
-5. **Fila de downloads**
-   - Queue de múltiplos links
-   - Download sequencial
-   - Prioridade: 🟡 Média
-
-6. **Teste de compatibilidade**
-   - Windows 7, 10, 11
-   - Máquinas de 32 e 64 bits
-   - Prioridade: 🟢 Baixa
-
-### Longo Prazo (3-6 meses)
-
-7. **Modo portável**
-   - Zero instalação
-   - Executar de pendrive
-   - Prioridade: 🟢 Baixa
-
-8. **Suporte a plugins**
-   - Sistema de extensões
-   - Scripts customizados
-   - Prioridade: 🟢 Baixa
-
-9. **API REST**
-   - Integração com outros apps
-   - Controle remoto
-   - Prioridade: 🟢 Baixa
-
----
-
-## 📊 Matriz RACI
-
-| Tarefa | Responsável | Accountable | Consultado | Informado |
-|---|---|---|---|---|
-| Código Python | Dev | Tech Lead | Seg | QA |
-| UI/UX | Designer | Dev | User | Team |
-| Segurança | Sec Team | CTO | Dev | All |
-| Deploy | DevOps | Rel Manager | Dev | Users |
-| Docs | Tech Writer | PM | Dev | All |
-| Testing | QA | Dev | Sec | Rel |
-
----
-
-## 🔄 Ciclo de Release
-
-```
-DEV (local)
-    ↓
-STAGING (teste)
-    ↓
-UAT (usuários)
-    ↓
-PRODUCTION (release)
-    ↓
-SUPPORT (monitoramento)
-```
-
-**Frequência:** Monthly (ou quando há features importantes)  
-**Checklist:**
-- [ ] Código revisado
-- [ ] Testes passando
-- [ ] Docs atualizadas
-- [ ] Security scan OK
-- [ ] Changelog preparado
-- [ ] Build testado
-- [ ] Release notes prontas
-
----
-
-## 📚 Documentação Relacionada
-
-- [README.md](../README.md) - Guia de uso
-- [requirements.txt](../requirements.txt) - Dependências
-- [criar_estrutura.ps1](../criar_estrutura.ps1) - Setup script
-- [src/youtube_download/app.py](../src/youtube_download/app.py) - Interface e orquestração
-- [src/youtube_download/downloader.py](../src/youtube_download/downloader.py) - Núcleo de download
-
----
-
-## 📝 Histórico de Alterações
-
-| Data | Versão | Autor | Mudanças |
-|---|---|---|---|
-| 2026-06-13 | 1.0 | Sistema | Análise inicial completa |
-| - | 1.1 | - | [Futuro] |
-
----
-
-## ✅ Checklist de Conclusão
-
-- [x] Análise de estado atual
-- [x] Estrutura documentada
-- [x] Lógica explicada
-- [x] Governança definida
-- [x] Segurança avaliada
-- [x] Planificação criada
-- [x] Recomendações listadas
-- [x] Documento finalizado
-
----
-
-**Documento gerado automaticamente**  
-**Próxima revisão:** Após fase 2 (empacotamento)  
-**Responsável:** DevOps/Tech Lead
+- [README.md](../README.md): instalação, uso, testes e build.
+- [CONTRIBUTING.md](../CONTRIBUTING.md): branches, commits e Pull Requests.
+- [ADR-002-Empacotamento-FFmpeg.md](./ADR-002-Empacotamento-FFmpeg.md): decisão de empacotamento do FFmpeg.

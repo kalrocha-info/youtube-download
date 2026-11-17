@@ -18,8 +18,8 @@ if (-not $iscc) {
     throw "ISCC.exe não encontrado. Instale o Inno Setup 6 com: winget install --id JRSoftware.InnoSetup -e"
 }
 
-if (-not (Test-Path ".\dist\Baixador_YouTube.exe")) {
-    throw "Executável não encontrado em dist\Baixador_YouTube.exe. Rode .\criar_executavel.ps1 primeiro."
+if (-not (Test-Path ".\dist\CASR_Media_Download.exe")) {
+    throw "Executável não encontrado em dist\CASR_Media_Download.exe. Rode .\criar_executavel.ps1 primeiro."
 }
 
 if (-not (Test-Path ".\dist\bin\ffmpeg")) {
@@ -35,7 +35,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "===============================================" -ForegroundColor Green
     Write-Host "INSTALADOR CRIADO COM SUCESSO!" -ForegroundColor Green
-    Write-Host "Arquivo: release\MediaDownloadWindowsSetup_v1.0.0.exe" -ForegroundColor Green
+    Write-Host "Arquivo: release\CASRMediaDownloadSetup_v1.0.0.exe" -ForegroundColor Green
     Write-Host "===============================================" -ForegroundColor Green
 } else {
     throw "Erro ao compilar instalador com Inno Setup."

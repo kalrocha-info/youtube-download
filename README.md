@@ -1,4 +1,6 @@
-# 🎵 Baixador de Vídeos e Músicas do YouTube (Desktop App)
+# CASR Media Download
+
+Aplicativo desktop para baixar vídeos e músicas do YouTube, com ícone personalizado para áudio e vídeo.
 
 > Uma aplicação desktop local, leve e funcional desenvolvida em Python para baixar vídeos e extrair áudios do YouTube com qualidade selecionável e interface amigável.
 
@@ -16,7 +18,11 @@ Este projeto resolve a necessidade de baixar conteúdos multimídia do YouTube d
 *   **Extração de Áudio:** Conversão direta para **MP3**, **M4A**, **WAV** e **FLAC** com taxa de amostragem configurável (320kbps, 256kbps, 192kbps e 128kbps).
 *   **Renomeação Customizada:** Opção de renomear o arquivo de saída antes do download, com suporte ao marcador dinâmico de extensão `%(ext)s`.
 *   **Interface Responsiva (Multi-threading):** O download roda em segundo plano em uma thread secundária de execução, evitando o travamento (congelamento) da GUI.
-*   **Cancelamento sob Demanda:** Botão "Parar" que permite abortar imediatamente um download em andamento de forma limpa.
+*   **Pausar e Retomar:** Um botão alterna entre pausar e retomar o download, mantendo a transferência aberta e continuando do ponto atual.
+*   **Cancelamento sob Demanda:** Botão "Parar" que interrompe o download em andamento e também encerra uma pausa.
+*   **Confirmação de Substituição:** Antes de baixar, pergunta se deve substituir um arquivo que já exista com o mesmo nome na pasta de destino.
+*   **Identidade CASR:** Janela, instalador e atalhos usam o nome CASR Media Download e um ícone de nota musical em película de vídeo.
+*   **Acesso à Pasta de Destino:** Botão para abrir diretamente no Explorador a pasta selecionada para salvar os arquivos.
 *   **Proteção contra Playlists:** Configuração padrão para baixar apenas o vídeo individual referenciado (`noplaylist=True`), prevenindo downloads acidentais de playlists inteiras.
 *   **Validação de Entrada:** Aceita apenas URLs de domínios YouTube/YouTube Music e sanitiza nomes customizados para evitar caracteres inválidos ou caminhos relativos.
 *   **Detecção Automática do FFmpeg:** Mecanismo inteligente de busca do FFmpeg na pasta local `bin/ffmpeg` ou no `PATH` global do sistema.
@@ -49,32 +55,43 @@ Siga os passos abaixo no PowerShell ou Prompt de Comando (CMD) do Windows para r
 
 ### 1. Clonar o Repositório
 ```powershell
-git clone https://github.com/[usuario]/YOUTUBE_DOWNLOAD.git
-cd YOUTUBE_DOWNLOAD
+git clone https://github.com/kalrocha-info/youtube-download.git
+cd youtube-download
 ```
 
 ### 2. Criar e Ativar o Ambiente Virtual (Recomendado)
 ```powershell
-# Criação do ambiente virtual na pasta .venv
-python -m venv .venv
+# Cria .venv apenas se ainda não existir
+if (-not (Test-Path ".venv")) { python -m venv .venv }
 
 # Ativação do ambiente no Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 
 # Ativação do ambiente no Windows (CMD)
-.venv\Scripts\activate.bat
+.\.venv\Scripts\activate.bat
 ```
 
 ### 3. Instalar Dependências
 ```powershell
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### 4. Executar o Aplicativo
 ```powershell
 python -m youtube_download
 ```
+
+### Uso do aplicativo
+
+1. Cole a URL de um vídeo do YouTube e escolha o formato e a qualidade.
+2. Opcionalmente, selecione a pasta de destino e informe um nome para o arquivo. Use `%(ext)s` para preservar a extensão escolhida.
+3. Clique em **BAIXAR AGORA**. O progresso e a velocidade aparecem na janela.
+4. Se já existir um arquivo com o mesmo nome, escolha se deseja substituí-lo. Ao escolher **Não**, o download é cancelado.
+5. Durante o download, **⏸ PAUSAR** suspende a transferência no próximo evento de progresso. O botão passa a **▶ RETOMAR** e continua a mesma transferência.
+6. **🛑 PARAR** cancela o download, inclusive se estiver pausado.
+7. **Abrir pasta de destino** abre no Explorador de Arquivos a pasta selecionada.
+
+Áudio e fusão de faixas de vídeo podem exigir o FFmpeg. O aplicativo tenta localizá-lo em `bin/ffmpeg/` ou no `PATH` do sistema.
 
 ### 5. Rodar Testes Automatizados
 ```powershell
@@ -85,31 +102,31 @@ python -m unittest discover -s tests
 
 ## 📦 Como Compilar em um Executável (.exe)
 
-O projeto usa o `PyInstaller` para empacotar o script Python em um único executável executável para o Windows.
-
-Para compilar de forma portátil:
+O script de build cria/usa `.venv`, atualiza as dependências e chama o PyInstaller:
 
 ```powershell
-pyinstaller --onefile --noconsole --paths src --name="Baixador_YouTube" --icon="assets/icon.ico" src/youtube_download/__main__.py
+.\criar_executavel.ps1
 ```
-> **Nota:** Certifique-se de que a pasta `bin/ffmpeg/` contendo os binários do FFmpeg esteja presente no mesmo diretório do arquivo `.exe` compilado quando for distribuí-lo para computadores que não possuem o FFmpeg no `PATH` do sistema. Veja a documentação técnica sobre isso no [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
+
+O executável é criado em `dist/CASR_Media_Download.exe`. O FFmpeg não é embutido nele: mantenha `bin/ffmpeg/` ao lado do `.exe` para distribuição portátil. Consulte [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
 
 ## 🧰 Como Gerar o Instalador Windows
 
-Após gerar o executável e garantir que `dist/bin/ffmpeg/` exista, gere o instalador com Inno Setup:
+Instale o Inno Setup 6 e execute:
 
 ```powershell
 winget install --id JRSoftware.InnoSetup -e
 .\criar_executavel.ps1
-Copy-Item -Recurse -Force .\bin .\dist\
 .\criar_instalador.ps1
 ```
 
-O instalador final será criado em:
+O script do instalador copia `bin/` para `dist/` se necessário. O instalador é criado em:
 
 ```text
-release/MediaDownloadWindowsSetup_v1.0.0.exe
+release/CASRMediaDownloadSetup_v1.0.0.exe
 ```
+
+Ao detectar uma instalação anterior, o instalador pergunta se deve removê-la e reinstalar na mesma pasta ou removê-la e permitir a escolha de outra pasta. Cancelar a pergunta interrompe a instalação.
 
 ---
 
@@ -138,12 +155,14 @@ YOUTUBE_DOWNLOAD/
 ├── 📁 tests/                     # Testes unitários com unittest
 │   └── 📄 test_downloader.py     # Contratos de validação e montagem de opções
 │
-├── 📁 assets/                    # Recursos visuais (ícones, logos)
-│
 ├── 📁 bin/                       # Ferramentas auxiliares de execução local
 │   └── 📁 ffmpeg/                # Pasta sugerida para o FFmpeg portátil (não rastreado pelo git)
 │
-└── 📁 dist/                      # Diretório de saída dos executáveis após compilação
+├── 📁 resources/                 # Ícone CASR Media Download
+├── 📁 installer/                 # Configuração do instalador Inno Setup
+├── 📄 criar_executavel.ps1       # Build do executável com PyInstaller
+├── 📄 criar_instalador.ps1       # Build do instalador Windows
+└── 📁 dist/                      # Saída gerada pelos scripts de build
 ```
 
 ---
@@ -153,6 +172,7 @@ YOUTUBE_DOWNLOAD/
 Para colaborar no desenvolvimento do projeto ou entender como as modificações devem ser enviadas, por favor leia o guia de contribuição detalhado em [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Para conhecer as decisões de arquitetura de software adotadas, consulte a pasta [.docs/](.docs/).
+O histórico das versões está em [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
