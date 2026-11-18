@@ -16,14 +16,14 @@ def resolve_ffmpeg_path(base_path=None):
     if not os.path.exists(ffmpeg_dir):
         return None
 
+    direct_bin = os.path.join(ffmpeg_dir, "bin")
+    if os.path.exists(direct_bin):
+        return direct_bin
+
     for folder in os.listdir(ffmpeg_dir):
         if folder.startswith("ffmpeg-") and "full_build" in folder:
             candidate = os.path.join(ffmpeg_dir, folder, "bin")
             if os.path.exists(candidate):
                 return candidate
-
-    direct_bin = os.path.join(ffmpeg_dir, "bin")
-    if os.path.exists(direct_bin):
-        return direct_bin
 
     return None

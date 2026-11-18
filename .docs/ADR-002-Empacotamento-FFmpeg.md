@@ -1,83 +1,59 @@
-# ADR-002: Estratégia de Gerenciamento e Empacotamento do FFmpeg
+# ADR-002: Build e empacotamento do FFmpeg
 
-**Data:** 13 de junho de 2026  
+**Data:** 17 de novembro de 2026  
 **Status:** Aceito  
-**Decisores:** Time Técnico do Projeto (Senior Architect / DevOps)  
+**Escopo:** Distribuicao Windows x64 do CASR Media Download
 
 ---
 
 ## Contexto
 
-A ferramenta `yt-dlp` necessita do utilitário `FFmpeg` (especificamente os binários `ffmpeg` e `ffprobe`) para executar duas operações fundamentais:
-1.  **Fusão (Merge) de Mídia:** O YouTube transmite fluxos de áudio e vídeo separados (DASH) em qualidades de alta definição (como 1080p ou superior). O FFmpeg é exigido para mesclar estes dois fluxos em um arquivo final `.mp4` ou `.webm`.
-2.  **Conversão e Extração de Áudio:** Para extrair áudio e salvar como `.mp3`, `.m4a`, `.wav` ou `.flac`, o `yt-dlp` executa chamadas em linha de comando ao codificador do FFmpeg.
+O CASR usa o FFmpeg para fundir faixas separadas de audio e video e para converter audio. As funcoes oferecidas pelo aplicativo precisam de MP3, M4A/AAC, WAV/PCM, FLAC, MP4 e WebM. O executavel externo tambem deve estar disponivel para `yt-dlp`, sem exigir que o usuario configure o `PATH` do Windows.
 
-O FFmpeg para Windows (build completa) pesa em média **400 MB+**. Commitar este binário gigante diretamente no Git incha o tamanho do repositório de forma insustentável. Ao mesmo tempo, exigir que usuários leigos baixem e configurem variáveis de ambiente globais do Windows (como o `PATH` do sistema) gera uma experiência de usuário (UX) muito ruim.
+A build completa de terceiros inclui componentes que o CASR nao usa e pode dificultar a verificacao de origem, licencas e dependencias. Binarios nao devem ser versionados no Git.
 
----
+## Decisao
 
-## Direcionadores da Decisão
+Distribuir uma build propria do FFmpeg 9.0.2 para Windows x64, compilada a partir das fontes oficiais e limitada ao runtime necessario:
 
-*   **Portabilidade:** O software deve rodar de forma "plug-and-play", idealmente de um pendrive ou pasta local sem exigir instalação complexa do FFmpeg.
-*   **Controle de Tamanho do Repositório:** Manter o histórico do Git leve, excluindo binários pesados.
-*   **Desempenho de Inicialização:** A inicialização do aplicativo em sua versão final empacotada em `.exe` deve ser rápida e eficiente.
+- Gerar `ffmpeg.exe` e `ffprobe.exe`; nao gerar `ffplay`.
+- Manter os codecs, formatos e muxers nativos necessarios ao CASR, incluindo AAC, FLAC, PCM, MP4 e WebM.
+- Habilitar `libmp3lame` para codificacao MP3; construir LAME 4.0 sem decoder nem frontend.
+- Desabilitar rede, autodeteccao de bibliotecas, documentacao e debug.
+- Compilar como bibliotecas compartilhadas, empacotando apenas as DLLs exigidas pelo runtime.
+- Nao habilitar GPL ou componentes nonfree. A build e configurada para permanecer sob LGPL.
+- Instalar os executaveis e DLLs em `bin/ffmpeg/bin/`, localizacao priorizada pelo `ffmpeg_locator.py`.
 
----
+O instalador Inno Setup copia somente `bin/ffmpeg/bin/` e `bin/ffmpeg/licenses/`. Ele nao copia `dist/bin` nem a antiga build full. A pasta `bin/ffmpeg/` continua fora do Git.
 
-## Alternativas Consideradas
+## Origem e reproducibilidade
 
-### Opção 1: Bundling Total no Executável via PyInstaller (`--add-data`)
-Compilar o FFmpeg diretamente dentro do arquivo único `CASR_Media_Download.exe`. Durante a inicialização, o PyInstaller extrai temporariamente o FFmpeg para o diretório `_MEIPASS` no disco do usuário e aponta a execução para lá.
+O pacote `release/CASR_FFmpeg_9.0.2_Source.zip` deve acompanhar a distribuicao do instalador. Deve conter as fontes correspondentes, licencas, checksums, configuracao e instrucoes de build.
 
-*   **Prós:**
-    *   Gera um arquivo único `.exe` final absoluto que funciona sozinho.
-*   **Contras:**
-    *   O tamanho do arquivo `.exe` salta para cerca de **150-200 MB** (devido à compressão).
-    *   **Lentidão no Boot:** A cada inicialização, o aplicativo precisa descompactar os executáveis de centenas de megabytes no disco temporário, gerando overhead alto e atrasando a abertura da janela.
-    *   Alguns antivírus bloqueiam a execução de arquivos descompactados dinamicamente na pasta Temp.
+- FFmpeg 9.0.2: SHA-256 `8C3850283EB25FA026482078A04051E0BE17347B09EF81A0849BEC15A96E002E`; assinatura PGP validada com o fingerprint oficial `FCF986EA15E6E293A5644F10B4322F04D67658D8`.
+- LAME 4.0: SHA-256 `3DF5124D5AD3A98312FFD7BA6A9B36230E4F8A3E66D3CE0F425E336C32D216EB`. A fonte foi obtida via HTTPS do projeto; nao foi localizada assinatura destacada para esse tarball.
+- Toolchain: MSYS2 UCRT64. A receita deve registrar as versoes dos pacotes e as opcoes efetivamente usadas.
 
-### Opção 2: Distribuição Modular com Detecção Relativa (Híbrida Portátil)
-Manter o FFmpeg fora do repositório Git (adicionado ao `.gitignore`). Implementar no código Python uma busca inteligente por um diretório local relativo chamado `bin/ffmpeg/` na raiz do projeto (ou no mesmo nível do executável `.exe`). Se o FFmpeg for encontrado na pasta local, o script passa o caminho para o `yt-dlp` via configuração `ffmpeg_location`. Se não encontrar, busca no `PATH` global do sistema.
+Os checksums e as fontes permitem conferir os arquivos recebidos; o arquivo de instrucoes e a configuracao devem permitir repetir a compilacao sem depender da antiga build de terceiros.
 
-*   **Prós:**
-    *   O repositório Git permanece leve (0 bytes de FFmpeg).
-    *   O executável final `.exe` abre instantaneamente (menos de 1 segundo), pois não há extração dinâmica de arquivos pesados.
-    *   Funciona sem precisar de privilégios de administrador ou configurações no Windows.
-*   **Contras:**
-    *   Para distribuição, é necessário distribuir uma pasta ZIP (contendo o `.exe` e a pasta `bin/ffmpeg/` ao lado) em vez de um arquivo `.exe` isolado.
+## Licencas
 
-### Opção 3: Dependência Exclusiva do Sistema
-Não prover auto-detecção local e exigir que o usuário instale o FFmpeg no Windows manualmente e o configure nas Variáveis de Ambiente.
+O aplicativo permanece sob MIT. Os componentes FFmpeg e LAME mantem suas proprias licencas e avisos, incluidos em `bin/ffmpeg/licenses/`. A distribuicao deve disponibilizar tambem as fontes correspondentes no arquivo separado acima. A presenca do arquivo de fontes e um requisito do script que gera o instalador.
 
-*   **Prós:**
-    *   Nenhum esforço de empacotamento ou detecção local.
-*   **Contras:**
-    *   UX inaceitável para usuários não técnicos. A maioria não conseguirá usar o app para baixar áudios ou vídeos 1080p.
+## Validacao da build
 
----
+Antes de distribuir, verificar:
 
-## Decisão
+1. `ffmpeg -buildconf` confirma as opcoes de configuracao e ausencia de GPL/nonfree.
+2. `ffmpeg -encoders` lista MP3 via `libmp3lame`, AAC, FLAC e PCM.
+3. `ffmpeg -muxers` lista MP4 e WebM; `ffprobe.exe` executa corretamente.
+4. Conversoes de teste funcionam para MP3, M4A, WAV e FLAC, e a fusao de faixas funciona para MP4 e WebM.
+5. O runtime inicia em Windows sem MSYS2 instalado, usando apenas as DLLs incluidas ou do sistema.
+6. Os testes do projeto passam e o instalador nao inclui a antiga build full.
 
-Optou-se pela **Opção 2: Distribuição Modular com Detecção Relativa (Híbrida Portátil)**.
+## Consequencias
 
-Implementou-se no módulo `src/youtube_download/ffmpeg_locator.py` o seguinte fluxo de resolução do caminho:
-1.  Verifica se a aplicação está rodando em modo compilado (PyInstaller `frozen=True`).
-2.  Obtém o caminho absoluto do diretório do executável (ou pasta de desenvolvimento).
-3.  Procura pela subpasta `bin/ffmpeg` e escaneia por diretórios criados a partir do extrator oficial (ex: `ffmpeg-*-full_build/bin`) ou pasta `bin` genérica.
-4.  Se localizado, atribui o valor à opção `ffmpeg_location` do `yt-dlp`.
-5.  Caso contrário, deixa o `yt-dlp` invocar o comando do sistema, esperando que esteja no `PATH`.
-
-O repositório Git ignora explicitamente a pasta `bin/ffmpeg/` no arquivo `.gitignore`.
-
----
-
-## Consequências
-
-### Positivas:
-*   Histórico do Git preservado e leve.
-*   O aplicativo final inicia instantaneamente.
-*   Portabilidade de execução garantida se empacotado em estrutura zip contendo o `.exe` e a subpasta `bin/ffmpeg`.
-
-### Negativas / Riscos:
-*   A distribuição exige um arquivo compactado `.zip` em vez de um `.exe` isolado, o que requer uma instrução clara de download e extração para o usuário final no README.
-*   **Mitigação:** Documentar claramente as etapas de instalação portátil e fornecer a instrução de descompactação do zip final na página de downloads e no `README.md`.
+- O usuario recebe um instalador simples, sem configurar o FFmpeg no sistema.
+- O Git permanece sem binarios grandes e sem a build full antiga.
+- O conjunto instalado fica menor e mais verificavel, embora ainda inclua as DLLs necessarias.
+- A distribuicao precisa manter o arquivo de fontes e os avisos de licenca junto aos binarios.

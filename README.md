@@ -34,7 +34,7 @@ Este projeto resolve a necessidade de baixar conteúdos multimídia do YouTube d
 *   **Linguagem de Programação:** Python 3.10+
 *   **Interface Gráfica (GUI):** Tkinter / ttk (nativo do Python)
 *   **Mecanismo de Download:** `yt-dlp`
-*   **Conversor de Mídia:** `FFmpeg 7.1` (necessário para fusão de vídeo e extração de áudio)
+*   **Conversor de Mídia:** FFmpeg `9.0.2` (build focado nas funções do aplicativo)
 *   **Empacotador:** `PyInstaller 6.10+` (geração de `.exe` autônomo para Windows)
 
 ---
@@ -45,7 +45,7 @@ Para rodar a aplicação em modo de desenvolvimento ou compilar o executável, v
 
 1.  **Python 3.10** ou superior instalado no seu sistema.
 2.  **FFmpeg** instalado ou extraído localmente.
-    *   *Recomendação:* Extraia a build do FFmpeg para a pasta `bin/ffmpeg/` no diretório raiz do projeto para que a aplicação o detecte de forma automática e portátil. A estrutura deve conter a pasta `bin` interna (ex: `bin/ffmpeg/ffmpeg-7.1-full_build/bin/ffmpeg.exe`).
+    *   Para desenvolvimento, coloque `ffmpeg.exe` e `ffprobe.exe` em `bin/ffmpeg/bin/`. O instalador oficial do projeto inclui esta build e os avisos de licença.
 
 ---
 
@@ -108,7 +108,7 @@ O script de build cria/usa `.venv`, atualiza as dependências e chama o PyInstal
 .\criar_executavel.ps1
 ```
 
-O executável é criado em `dist/CASR_Media_Download.exe`. O FFmpeg não é embutido nele: mantenha `bin/ffmpeg/` ao lado do `.exe` para distribuição portátil. Consulte [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md).
+O executável é criado em `dist/CASR_Media_Download.exe`. O FFmpeg não é embutido nele: mantenha `bin/ffmpeg/` ao lado do `.exe` para distribuição portátil. Consulte [ADR-002](.docs/ADR-002-Empacotamento-FFmpeg.md) para a configuração e as fontes correspondentes.
 
 ## 🧰 Como Gerar o Instalador Windows
 
@@ -120,10 +120,10 @@ winget install --id JRSoftware.InnoSetup -e
 .\criar_instalador.ps1
 ```
 
-O script do instalador copia `bin/` para `dist/` se necessário. O instalador é criado em:
+O instalador requer a build validada em `bin/ffmpeg/`, seus avisos de licença e o arquivo de fontes `release/CASR_FFmpeg_9.0.2_Source.zip`. Ele inclui somente o runtime selecionado, sem copiar o antigo pacote full de `dist/bin`. O instalador é criado em:
 
 ```text
-release/CASRMediaDownloadSetup_v1.0.0.exe
+release/CASRMediaDownloadSetup_v1.0.1.exe
 ```
 
 Ao detectar uma instalação anterior, o instalador pergunta se deve removê-la e reinstalar na mesma pasta ou removê-la e permitir a escolha de outra pasta. Cancelar a pergunta interrompe a instalação.
@@ -156,7 +156,9 @@ YOUTUBE_DOWNLOAD/
 │   └── 📄 test_downloader.py     # Contratos de validação e montagem de opções
 │
 ├── 📁 bin/                       # Ferramentas auxiliares de execução local
-│   └── 📁 ffmpeg/                # Pasta sugerida para o FFmpeg portátil (não rastreado pelo git)
+│   └── 📁 ffmpeg/                # Runtime e licenças (não rastreados pelo git)
+│       ├── 📁 bin/               # ffmpeg.exe, ffprobe.exe e DLLs necessárias
+│       └── 📁 licenses/          # Avisos de licença do FFmpeg e LAME
 │
 ├── 📁 resources/                 # Ícone CASR Media Download
 ├── 📁 installer/                 # Configuração do instalador Inno Setup
