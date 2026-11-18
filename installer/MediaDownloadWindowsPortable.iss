@@ -1,5 +1,5 @@
-#define MyAppName "CASR Media Download"
-#define MyAppVersion "1.0.0"
+﻿#define MyAppName "CASR Media Download"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "kalrocha-info"
 #define MyAppExeName "CASR_Media_Download.exe"
 
@@ -15,7 +15,7 @@ DisableDirPage=no
 UsePreviousAppDir=no
 LicenseFile=..\LICENSE
 OutputDir=..\release
-OutputBaseFilename=CASRMediaDownloadSetup_v1.0.0
+OutputBaseFilename=CASRMediaDownloadSetup_v1.0.1
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -33,7 +33,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\dist\bin\*"; DestDir: "{app}\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\bin\ffmpeg\bin\*"; DestDir: "{app}\bin\ffmpeg\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\bin\ffmpeg\licenses\*"; DestDir: "{app}\bin\ffmpeg\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
@@ -172,3 +173,4 @@ begin
   if ExitCode <> 0 then
     Result := 'A remocao da instalacao anterior falhou. A nova instalacao foi cancelada.';
 end;
+

@@ -421,6 +421,16 @@ class FfmpegLocatorTest(unittest.TestCase):
 
             self.assertEqual(resolve_ffmpeg_path(tmpdir), ffmpeg_bin)
 
+    def test_prefers_direct_bin_over_legacy_full_build(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ffmpeg_dir = os.path.join(tmpdir, "bin", "ffmpeg")
+            direct_bin = os.path.join(ffmpeg_dir, "bin")
+            legacy_bin = os.path.join(ffmpeg_dir, "ffmpeg-7.1-full_build", "bin")
+            os.makedirs(direct_bin)
+            os.makedirs(legacy_bin)
+
+            self.assertEqual(resolve_ffmpeg_path(tmpdir), direct_bin)
+
 
 if __name__ == "__main__":
     unittest.main()

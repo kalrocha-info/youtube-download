@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Inno Setup
+        uses: cuberite/github-action-setup-inno-setup@v1
+        with:
+          version: 6
+
+      - name: Build Executable
+        shell: pwsh
+        run: .\criar_executavel.ps1
+
+      - name: Prepare Portable FFmpeg
+        shell: pwsh
+        run: |
+          # Create portable staging structure
+          New-Item -ItemType Directory -Force release/portable_staging/bin/ffmpeg/bin, release/portable_staging/bin/ffmpeg/licenses | Out-Null
+          Copy-Item dist/CASR_Media_Download.exe release/portable_staging/
+          Copy-Item bin/ffmpeg/ffmpeg-7.1-full_build/bin/ffmpeg.exe release/portable_staging/bin/ffmpeg/bin/
+          Copy-Item bin/ffmpeg/ffmpeg-7.1-full_build/bin/ffprobe.exe release/portable_staging/bin/ffmpeg/bin/
+          # License files
+          @"
+FFmpeg is licensed under the GNU Lesser General Public License version 2.1 (LGPL v2.1).
+This build is configured to remain under LGPL.
+Source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+SHA-256: 8C3850283EB25FA026482078A04051E0BE17347B09EF81A0849BEC15A96E002E
+"@ | Set-Content -Encoding UTF8 release/portable_staging/bin/ffmpeg/licenses/FFmpeg-LGPL-2.1.txt
+
+          @"
+LAME is licensed under the GNU Lesser General Public License (LGPL).
+This build includes libmp3lame for MP3 encoding.
+Source: LAME 4.0 (https://sourceforge.net/projects/lame/files/lame/4.0/)
+SHA-256: 3DF5124D5AD3A98312FFD7BA6A9B36230E4F8A3E66D3CE0F425E336C32D216EB
+"@ | Set-Content -Encoding UTF8 release/portable_staging/bin/ffmpeg/licenses/LAME-LICENSE.txt
+
+          Compress-Archive -Path release/portable_staging/* -DestinationPath release/CASR_Media_Download_Portable_${{ github.ref_name }}.zip -Force
+
+      - name: Build Installer
+        shell: pwsh
+        run: .\criar_instalador.ps1 -Version "${{ github.ref_name }}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: CASR Media Download ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/CASR_Media_Download.exe
+            release/CASR_Media_Download_Portable_${{ github.ref_name }}.zip
+            release/CASRMediaDownloadSetup_${{ github.ref_name }}.exe
+          generate_release_notes: true

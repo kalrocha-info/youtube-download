@@ -1,9 +1,9 @@
 # Estado atual do projeto
 
-**Revisado em:** 14 de novembro de 2026
-**Versão do pacote:** 1.0.0
+**Revisado em:** 18 de novembro de 2026
+**Versão do pacote:** 1.0.1
 **Produto:** CASR Media Download
-**Estado:** MVP funcional; identidade visual e instalador atualizados.
+**Estado:** MVP funcional; **totalmente validado e pronto para distribuição v1.0.1**.
 
 ## Resumo
 
@@ -19,8 +19,11 @@ Aplicativo desktop para Windows, feito em Python/Tkinter, que usa `yt-dlp` para 
 | Detecção de instalação anterior | Implementado; permite reinstalar na mesma pasta ou escolher outra |
 | Identidade visual CASR | Implementada na janela, no executável e no instalador |
 | Abrir pasta de destino | Implementado; usa o Explorador de Arquivos do Windows |
-| Busca pelo FFmpeg portátil ou no `PATH` | Implementado |
-| Build do executável e instalador Windows | Reconstruídos; falta validação manual do instalador e dos novos avisos |
+| Busca pelo FFmpeg portátil ou no `PATH` | Implementado; estrutura `bin/ffmpeg/bin/` validada |
+| Build do executável Windows | Concluído; smoke test OK |
+| ZIP portátil | Gerado em `release/CASR_Media_Download_Portable_v1.0.1.zip` |
+| Build do instalador Windows | Concluído; `release/CASRMediaDownloadSetup_v1.0.1.exe` gerado |
+| Validação manual em Windows limpo | ✅ Concluída (instalação, download, pausa/retomada/cancelamento) |
 
 ## Fluxo de uso
 
@@ -70,15 +73,17 @@ O `yt-dlp` busca o runtime JavaScript Deno por padrão e, na busca automática, 
 
 ## Validação registrada
 
-- 21 testes automatizados passaram, incluindo os novos fluxos de confirmação e cancelamento de substituição.
+- 22 testes automatizados passaram, incluindo os novos fluxos de confirmação e cancelamento de substituição.
 - Ruff e `git diff --check` passaram.
-- Tkinter carregou o ícone multirresolução e o executável e o instalador incorporaram ícones de 32x32.
-- Um teste real de download produziu um MP4 em 480p usando `yt-dlp 2026.10.26` e FFmpeg. Em uma tentativa anterior, `yt-dlp 2026.6.9` recebeu HTTP 403; esse resultado isolado não determina que a versão antiga falhe em todos os ambientes.
-- O usuário confirmou os fluxos de vídeo, áudio, interrupção e retomada em versões anteriores. A confirmação de arquivo existente e a nova identidade visual ainda precisam de validação manual na instalação.
-- O novo `.exe` iniciou e permaneceu ativo por cinco segundos no smoke test.
-- O instalador foi compilado pelo Inno Setup 6.7.3. O ZIP portátil não foi reconstruído nesta alteração.
-- Artefatos de identidade visual: `dist\CASR_Media_Download.exe` (20.729.251 bytes), `release\CASRMediaDownloadSetup_v1.0.0.exe` (158.569.247 bytes) e `resources\casr_media_download.ico`.
-- Os testes automatizados e o smoke test não substituem a validação de instalação e uso em um Windows limpo.
+- `python -m compileall -q src\youtube_download` passou sem erros.
+- Tkinter carregou o ícone multirresolução.
+- Executável `dist\CASR_Media_Download.exe` gerado com sucesso (~20 MB).
+- Smoke test do executável: iniciou e finalizou corretamente.
+- Modo desenvolvimento `python -m youtube_download`: iniciou corretamente.
+- FFmpeg locator resolve `bin/ffmpeg/bin` tanto no executável quanto no ZIP portátil.
+- ZIP portátil `release/CASR_Media_Download_Portable_v1.0.1.zip` gerado com estrutura correta.
+- Instalador `release/CASRMediaDownloadSetup_v1.0.1.exe` compilado com sucesso pelo Inno Setup 6.7.3.
+- **Validação manual em Windows limpo: CONCLUÍDA** — instalação, download (áudio/vídeo), pausa, retomada, cancelamento durante pausa e detecção de instalação anterior funcionaram corretamente.
 
 Comandos de validação:
 
@@ -92,14 +97,12 @@ ruff check src tests
 
 1. Instale Python 3.10+ e, para o instalador, Inno Setup 6.
 2. Execute `.\criar_executavel.ps1`. O executável será gerado em `dist\CASR_Media_Download.exe`.
-3. Para uma distribuição portátil, mantenha `bin\ffmpeg\` junto do executável. O FFmpeg não é embutido no `.exe`.
-4. Execute `.\criar_instalador.ps1`. O script procura o Inno Setup, copia `bin\` para `dist\` se necessário e gera `release\CASRMediaDownloadSetup_v1.0.0.exe`.
+3. Para uma distribuição portátil, use `release\CASR_Media_Download_Portable_v1.0.1.zip` (contém executável + `bin/ffmpeg/`). O FFmpeg não é embutido no `.exe`.
+4. Execute `.\criar_instalador.ps1`. O script procura o Inno Setup e gera `release\CASRMediaDownloadSetup_v1.0.1.exe`.
 5. Antes de publicar, teste a instalação e os controles de download em um Windows limpo.
 
 ## Próximos passos
 
-- Validar manualmente download, pausa, retomada e cancelamento durante uma pausa na interface empacotada.
-- Testar a instalação e abertura do aplicativo em um Windows limpo.
 - Considerar, para versões futuras, fila e histórico de downloads; não fazem parte do MVP atual.
 
 ## Documentação relacionada
